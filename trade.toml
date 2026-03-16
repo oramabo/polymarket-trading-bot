@@ -16,6 +16,6 @@ exit_price_ratio = 0.98
 
 [trade_2]
 entry_price_ratio = [0.4, 0.95]
-entry_time_ratio = 0.6
+entry_time_ratio = 0.7
 exit_price_ratio_range = [[0.0, 0.01], [1.0, 1.0]]
 emergency_swap_price = [0.0, 0.5]

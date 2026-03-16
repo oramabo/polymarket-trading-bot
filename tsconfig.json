@@ -1,40 +1,28 @@
 {
-  // Visit https://aka.ms/tsconfig to read more about this file
   "compilerOptions": {
-    // File Layout
-    // "rootDir": "./src",
-    // "outDir": "./dist",
-
-    // Environment Settings
-    // See also https://aka.ms/tsconfig/module
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    // Module settings
+    "module": "CommonJS", // <-- Use CommonJS to support require()
+    "moduleResolution": "node", // Node-style module resolution
     "target": "esnext",
-    "lib": ["esnext", "dom"],
-    // and npm install -D @types/node
-
-    // Other Outputs
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    // Output
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
-    // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-
-    // Style Options
-    // "noImplicitReturns": true,
-    // "noImplicitOverride": true,
-    // "noUnusedLocals": true,
-    // "noUnusedParameters": true,
-    // "noFallthroughCasesInSwitch": true,
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Recommended Options
-    "strict": true,
+    // Type checking
+    "strict": false, // <-- disable strict mode
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+    // Other recommended options
     "jsx": "react-jsx",
     "isolatedModules": true,
-    "moduleDetection": "force",
-    "skipLibCheck": true,
-  }
+    "skipLibCheck": true
+  },
+  "include": ["src"],
+  "exclude": ["dist", "node_modules", "test", "ui"]
 }

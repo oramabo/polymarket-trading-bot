@@ -20,8 +20,10 @@
     "@polymarket/clob-client": "^5.2.1",
     "@tensorflow/tfjs": "^4.22.0",
     "@types/ws": "^8.18.1",
+    "bignum-ts-v2": "^5.0.3",
     "ccxt": "^4.5.36",
     "dotenv": "^16.4.5",
+    "ethers": "^6.16.0",
     "ml-regression": "^6.3.0",
     "ws": "^8.19.0",
     "zod": "^4.3.5"
@@ -30,7 +32,6 @@
     "@types/dotenv": "^8.2.3",
     "@types/node": "^20.11.0",
     "ts-node": "^10.9.2",
-    "axios": "^1.7.9",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

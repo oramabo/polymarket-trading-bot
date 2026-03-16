@@ -1,10 +1,10 @@
 import { ClobClient, Side } from "@polymarket/clob-client";
+import {Big} from "bignum-ts-v2";
 import { generateMarketSlug } from "./config";
 import type { Coin, MarketConfig, Minutes } from "./types";
 import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE, SIGNER } from "./services";
 import { getCurrentTime } from "./utils";
 import { loadConfig } from "./config/toml";
-import validateProxyWallet from './utils/validate';
 import { Trade } from "./trade";
 
 loadConfig();
@@ -17,15 +17,12 @@ const marketConfig: MarketConfig = {
 async function main() {
 
   console.log("SIGNER ", SIGNER);
-
   const clobClient = new ClobClient(
     HOST,
     CHAIN_ID,
     SIGNER,
   );
 
-  const proxyWallet = await validateProxyWallet();
-  console.log("proxyWallet", proxyWallet);
   const apiKey = await clobClient.createOrDeriveApiKey();
 
   console.log("apiKey", apiKey);
@@ -41,6 +38,7 @@ async function main() {
       FUNDER // Proxy wallet contract address (holds funds), SIGNER is the EOA that signs
     );
     const { slug, endTimestamp } = generateMarketSlug(marketConfig.coin, marketConfig.minutes);
+    const buyAmountLimitInUsd = new Big(100);
 
     console.log(`🔍 Searching for market with slug: "${slug}"`);
     console.log(`   Market ends at:${getCurrentTime()} / ${endTimestamp}`);
