@@ -1,4 +1,4 @@
-# Polymarket Arbitrage && CopyTrade Bot (TypeScript) 
+# Polymarket Arbitrage Trading Bot (TypeScript) 
 
 A Polymarket arbitrage bot that trades on [Polymarket](https://polymarket.com) **binary crypto markets** (e.g. “Bitcoin up or down in the next 15 minutes”). It connects to Polymarket’s CLOB and real-time data, subscribes to a market by coin and period, and can run configurable strategies.
 
@@ -73,8 +73,8 @@ A Polymarket arbitrage bot that trades on [Polymarket](https://polymarket.com) *
 
    Ubuntu
    ```bash
-   git clone https://github.com/kratos-te/polymarket-arbitrage-bot
-   cd polymarket-arbitrage-bot
+   git clone https://github.com/Krypto-Hashers-Community/polymarket-trading-bot
+   cd polymarket-trading-bot
    npm install
    ```
 
@@ -116,15 +116,3 @@ A Polymarket arbitrage bot that trades on [Polymarket](https://polymarket.com) *
 
 This bot is for education and experimentation. Trading on Polymarket involves financial risk. Only use funds you can afford to lose and ensure you comply with Polymarket’s terms and applicable laws.
 
-<div style={{display : flex ; justify-content : space-evenly}}> 
-    <a href="department.c0809@gmail.com" target="_blank">
-        <img alt="Email"
-        src="https://img.shields.io/badge/Email-00599c?style=for-the-badge&logo=gmail&logoColor=white"/>
-    </a>
-     <a href="https://x.com/akratos_god" target="_blank"><img alt="Twitter"
-        src="https://img.shields.io/badge/Twitter-000000?style=for-the-badge&logo=x&logoColor=white"/></a>
-    <a href="https://discordapp.com/users/279925495192092692" target="_blank"><img alt="Discord"
-        src="https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white"/></a>
-    <a href="https://t.me/KratostesBoom" target="_blank"><img alt="Telegram"
-        src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white"/></a>
-</div>
