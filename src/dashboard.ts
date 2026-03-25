@@ -82,7 +82,7 @@ header h1{font-size:18px;color:#58a6ff}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px}
 .field{display:flex;flex-direction:column}
-.field label{font-size:11px;color:#8b949e;margin-bottom:3px;cursor:help;border-bottom:1px dotted #484f58;display:inline-block;width:fit-content}
+.field label{font-size:11px;color:#8b949e;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px}
 .field input,.field select{background:#0d1117;border:1px solid #30363d;color:#c9d1d9;padding:7px 9px;border-radius:6px;font-size:13px;width:100%}
 .field input:focus,.field select:focus{outline:none;border-color:#58a6ff}
 .coins{display:flex;gap:8px;flex-wrap:wrap}
@@ -90,7 +90,7 @@ header h1{font-size:18px;color:#58a6ff}
 .coins input:checked+span{color:#58a6ff;font-weight:600}
 .tuple{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .tuple-group{margin-bottom:10px}
-.tuple-group>label{font-size:11px;color:#8b949e;margin-bottom:3px;display:block;cursor:help;border-bottom:1px dotted #484f58;width:fit-content}
+.tuple-group>label{font-size:11px;color:#8b949e;margin-bottom:3px;display:inline-flex;align-items:center;gap:4px}
 .btn{background:#238636;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;width:100%}
 .btn:hover{background:#2ea043}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -133,6 +133,21 @@ header h1{font-size:18px;color:#58a6ff}
 .toggle input:checked+.sl:before{transform:translateX(16px);background:#fff}
 .tf{display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .tf .tl{font-size:11px;color:#8b949e;cursor:help;border-bottom:1px dotted #484f58}
+.help{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#21262d;border:1px solid #30363d;color:#8b949e;font-size:10px;cursor:pointer;flex-shrink:0;font-weight:700;line-height:1}
+.help:active{background:#30363d}
+.help-pop{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);background:#161b22;border:1px solid #58a6ff;border-radius:8px;padding:16px;max-width:320px;width:90%;z-index:1000;font-size:13px;color:#c9d1d9;line-height:1.5;box-shadow:0 8px 24px #00000080}
+.help-pop.show{display:block}
+.help-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#00000060;z-index:999}
+.help-overlay.show{display:block}
+.help-pop b{color:#58a6ff}
+.risk-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.risk-btn{flex:1;min-width:80px;padding:10px;border-radius:8px;border:1px solid #30363d;background:#0d1117;color:#8b949e;cursor:pointer;text-align:center;font-size:13px;font-weight:600;transition:.2s}
+.risk-btn:hover{border-color:#58a6ff;color:#c9d1d9}
+.risk-btn.active{border-width:2px}
+.risk-low{border-color:#3fb950;color:#3fb950;background:#3fb95010}
+.risk-med{border-color:#d29922;color:#d29922;background:#d2992210}
+.risk-high{border-color:#f85149;color:#f85149;background:#f8514910}
+.risk-desc{font-size:11px;color:#484f58;margin-bottom:10px}
 .empty{text-align:center;padding:20px;color:#484f58;font-size:13px}
 .updated{font-size:10px;color:#484f58;text-align:right;margin-top:6px}
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -159,6 +174,20 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="stat"><div class="sv" id="sWL">0/0</div><div class="sl">W/L</div></div>
 </div>
 
+<div class="help-overlay" id="hOverlay" onclick="closeHelp()"></div>
+<div class="help-pop" id="hPop"><span id="hText"></span></div>
+
+<div class="card">
+<h2>Risk Profile</h2>
+<p class="card-desc">Choose a preset risk level. This adjusts all trading parameters at once.</p>
+<div class="risk-row">
+<div class="risk-btn" onclick="setRisk('low')">Conservative</div>
+<div class="risk-btn" onclick="setRisk('med')">Balanced</div>
+<div class="risk-btn" onclick="setRisk('high')">Aggressive</div>
+</div>
+<div class="risk-desc" id="rDesc">Select a profile to auto-fill settings, or customize manually below.</div>
+</div>
+
 <div class="card">
 <h2>Live Positions</h2>
 <p class="card-desc">Real-time view of active positions across all coins. Updates every 2 seconds.</p>
@@ -177,15 +206,15 @@ header h1{font-size:18px;color:#58a6ff}
 <p class="card-desc">Core bot settings. Strategy determines the trading algorithm used.</p>
 <div class="row3">
 <div class="field">
-<label title="trade_1 uses simple price/time exits. trade_2 uses signal-based entries with trailing stop, stop-loss, and take-profit.">Strategy</label>
+<label>Strategy <span class="help" onclick="hp('trade_1: Simple exit by time/price ratio. trade_2: Advanced signal-based with trailing stop, stop-loss, take-profit, and position sizing.')">?</span></label>
 <select id="strategy"><option value="trade_1">trade_1</option><option value="trade_2">trade_2</option></select>
 </div>
 <div class="field">
-<label title="Amount in USD to spend per trade. May be scaled by signal strength if position_scale is enabled.">Budget (USD)</label>
+<label>Budget (USD) <span class="help" onclick="hp('Amount in USD per trade. May be scaled down by signal strength if Position Scale is on.')">?</span></label>
 <input type="number" id="trade_usd" step="0.5" min="0.5">
 </div>
 <div class="field">
-<label title="Number of times to retry a failed order before giving up.">Max Retries</label>
+<label>Max Retries <span class="help" onclick="hp('Times to retry a failed order before giving up.')">?</span></label>
 <input type="number" id="max_retries" step="1" min="1">
 </div>
 </div>
@@ -196,7 +225,7 @@ header h1{font-size:18px;color:#58a6ff}
 <h2>Markets</h2>
 <p class="card-desc">Configure which coins to trade and their market timeframes.</p>
 <div class="field" style="margin-bottom:10px">
-<label title="Which coins to trade. Changes require a restart to take effect.">Active Coins</label>
+<label >Active Coins <span class="help" onclick="hp('Select coins to trade. Changing this requires a restart.')">?</span></label>
 <div class="coins">
 <label><input type="checkbox" value="btc" class="ccb"><span>BTC</span></label>
 <label><input type="checkbox" value="eth" class="ccb"><span>ETH</span></label>
@@ -206,11 +235,11 @@ header h1{font-size:18px;color:#58a6ff}
 </div>
 <div class="row">
 <div class="field">
-<label title="Market duration. Shorter = more trades but less data. 5m only works for BTC.">Default Period</label>
+<label >Default Period <span class="help" onclick="hp('Market window length. Shorter = more trades. 5m only works for BTC.')">?</span></label>
 <select id="mp"><option value="5">5m</option><option value="15">15m</option><option value="60">1h</option><option value="240">4h</option><option value="1440">1d</option></select>
 </div>
 <div class="field">
-<label title="Override the default period for BTC. BTC supports 5-minute markets, others don't.">BTC Period Override</label>
+<label >BTC Period <span class="help" onclick="hp('Override period for BTC. BTC supports 5m markets, others start at 15m.')">?</span></label>
 <select id="bp"><option value="">Use default</option><option value="5">5m</option><option value="15">15m</option><option value="60">1h</option><option value="240">4h</option><option value="1440">1d</option></select>
 </div>
 </div>
@@ -220,48 +249,48 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="card" id="t1c">
 <h2>Trade 1 Settings</h2>
 <p class="card-desc">Simple strategy: exits based on time elapsed or price ratio threshold.</p>
-<div class="tuple-group"><label title="Price range for entry. Both values between 0-1.">Entry Price Range</label><div class="tuple"><input type="number" id="t1em" step="0.01"><input type="number" id="t1ex" step="0.01"></div></div>
-<div class="tuple-group"><label title="Price range for swap. Both values between 0-1.">Swap Price Range</label><div class="tuple"><input type="number" id="t1sm" step="0.01"><input type="number" id="t1sx" step="0.01"></div></div>
+<div class="tuple-group"><label >Entry Price Range <span class="help" onclick="hp('Price range for entry. Both values 0-1.')">?</span></label><div class="tuple"><input type="number" id="t1em" step="0.01"><input type="number" id="t1ex" step="0.01"></div></div>
+<div class="tuple-group"><label >Swap Price Range <span class="help" onclick="hp('Price range for swap. Both values 0-1.')">?</span></label><div class="tuple"><input type="number" id="t1sm" step="0.01"><input type="number" id="t1sx" step="0.01"></div></div>
 <div class="row">
-<div class="field"><label title="Take profit multiplier.">Take Profit</label><input type="number" id="t1tp" step="0.1"></div>
-<div class="field"><label title="Stop loss multiplier.">Stop Loss</label><input type="number" id="t1sl" step="0.1"></div>
+<div class="field"><label >Take Profit <span class="help" onclick="hp('Take profit multiplier.')">?</span></label><input type="number" id="t1tp" step="0.1"></div>
+<div class="field"><label >Stop Loss <span class="help" onclick="hp('Stop loss multiplier.')">?</span></label><input type="number" id="t1sl" step="0.1"></div>
 </div>
 <div class="row">
-<div class="field"><label title="Sell when this fraction of market time has passed.">Exit Time Ratio</label><input type="number" id="t1et" step="0.01"></div>
-<div class="field"><label title="Sell when price ratio exceeds this value.">Exit Price Ratio</label><input type="number" id="t1ep" step="0.01"></div>
+<div class="field"><label >Exit Time Ratio <span class="help" onclick="hp('Sell when this fraction of time passes. 0.95 = sell after 95% elapsed.')">?</span></label><input type="number" id="t1et" step="0.01"></div>
+<div class="field"><label >Exit Price Ratio <span class="help" onclick="hp('Sell when price ratio exceeds this.')">?</span></label><input type="number" id="t1ep" step="0.01"></div>
 </div>
 </div>
 
 <div class="card" id="t2c">
 <h2>Trade 2 Settings</h2>
 <p class="card-desc">Advanced signal-based strategy with momentum scoring, trailing stops, and risk management.</p>
-<div class="tuple-group"><label title="Only enter when |price-0.5|/0.5 is in this range. [0.2,0.95] = enter when price shows clear direction.">Entry Price Ratio [min, max]</label><div class="tuple"><input type="number" id="t2em" step="0.01"><input type="number" id="t2ex" step="0.01"></div></div>
+<div class="tuple-group"><label >Entry Price Ratio <span class="help" onclick="hp('Only buy when price deviates this much from 50/50. [0.2, 0.95] means enter when price shows direction.')">?</span></label><div class="tuple"><input type="number" id="t2em" step="0.01"><input type="number" id="t2ex" step="0.01"></div></div>
 <div class="row">
-<div class="field"><label title="Wait until this fraction of market time passes before entering. 0.4 = wait 40%.">Entry Time Ratio</label><input type="number" id="t2et" step="0.01"></div>
-<div class="field"><label title="Stop entering after this fraction. 0.85 = no entries after 85% elapsed.">Max Entry Time</label><input type="number" id="t2met" step="0.01"></div>
+<div class="field"><label >Entry Time <span class="help" onclick="hp('Wait this fraction of market time before buying. 0.3 = wait 30%.')">?</span></label><input type="number" id="t2et" step="0.01"></div>
+<div class="field"><label >Max Entry Time <span class="help" onclick="hp('Stop entering after this point. 0.9 = no buys after 90% elapsed.')">?</span></label><input type="number" id="t2met" step="0.01"></div>
 </div>
-<div class="tuple-group"><label title="Legacy exit ranges. Set both to [1.0, 1.0] to disable. Use trailing stop instead.">Exit Range 1 [min, max]</label><div class="tuple"><input type="number" id="t2e1m" step="0.01"><input type="number" id="t2e1x" step="0.01"></div></div>
-<div class="tuple-group"><label title="Legacy exit ranges. Set both to [1.0, 1.0] to disable.">Exit Range 2 [min, max]</label><div class="tuple"><input type="number" id="t2e2m" step="0.01"><input type="number" id="t2e2x" step="0.01"></div></div>
-<div class="tuple-group"><label title="Legacy: if sell succeeds and price in range, buy opposite. [1.0,1.0] = disabled.">Emergency Swap [min, max]</label><div class="tuple"><input type="number" id="t2esm" step="0.01"><input type="number" id="t2esx" step="0.01"></div></div>
+<div class="tuple-group"><label >Exit Range 1 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable. Use trailing stop instead.')">?</span></label><div class="tuple"><input type="number" id="t2e1m" step="0.01"><input type="number" id="t2e1x" step="0.01"></div></div>
+<div class="tuple-group"><label >Exit Range 2 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2e2m" step="0.01"><input type="number" id="t2e2x" step="0.01"></div></div>
+<div class="tuple-group"><label >Emergency Swap <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2esm" step="0.01"><input type="number" id="t2esx" step="0.01"></div></div>
 <div class="row">
-<div class="field"><label title="Sell if price drops this % from peak. 0.15 = 15% drop triggers sell. Only when in profit.">Trailing Stop %</label><input type="number" id="t2ts" step="0.01"></div>
-<div class="field"><label title="Sell if loss exceeds this %. 0.30 = cut at 30% loss.">Stop Loss %</label><input type="number" id="t2slp" step="0.01"></div>
-</div>
-<div class="row">
-<div class="field"><label title="Sell when |price-0.5|/0.5 exceeds this. 0.80 = sell when 80%+ decided.">Take Profit Ratio</label><input type="number" id="t2tpr" step="0.01"></div>
-<div class="field"><label title="Minimum signal score (0-1) to enter. Higher = fewer but better trades.">Min Signal</label><input type="number" id="t2ms" step="0.01"></div>
+<div class="field"><label >Trailing Stop % <span class="help" onclick="hp('Sell if price drops this % from its peak while you are in profit. Higher = hold longer. 0.25 = sell after 25% drop.')">?</span></label><input type="number" id="t2ts" step="0.01"></div>
+<div class="field"><label >Stop Loss % <span class="help" onclick="hp('Cut losses if unrealized loss exceeds this %. Higher = more risk tolerance. 0.40 = cut at 40% loss.')">?</span></label><input type="number" id="t2slp" step="0.01"></div>
 </div>
 <div class="row">
-<div class="field"><label title="Max buy/sell cycles per market window when re-entry enabled.">Max Reentries</label><input type="number" id="t2mr" step="1" min="0"></div>
+<div class="field"><label >Take Profit <span class="help" onclick="hp('Sell when price is this decisive. Higher = hold longer for bigger wins. 0.90 = sell when 90% decided.')">?</span></label><input type="number" id="t2tpr" step="0.01"></div>
+<div class="field"><label >Min Signal <span class="help" onclick="hp('Minimum signal score (0-1) to enter a trade. Higher = fewer but better trades.')">?</span></label><input type="number" id="t2ms" step="0.01"></div>
+</div>
+<div class="row">
+<div class="field"><label >Max Reentries <span class="help" onclick="hp('Max buy/sell cycles per market when re-entry is enabled.')">?</span></label><input type="number" id="t2mr" step="1" min="0"></div>
 <div class="field"></div>
 </div>
 <div class="tf">
 <label class="toggle"><input type="checkbox" id="t2ps"><span class="sl"></span></label>
-<span class="tl" title="Scale trade amount by signal strength. Strong = full budget, weak = reduced.">Position Scale</span>
+<span class="tl" >Position Scale <span class="help" onclick="hp('Scale trade amount by signal confidence. Strong signal = full budget, weak = smaller bet.')">?</span></span>
 </div>
 <div class="tf">
 <label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label>
-<span class="tl" title="Allow buying again after selling in the same market window.">Allow Re-entry</span>
+<span class="tl" >Allow Re-entry <span class="help" onclick="hp('Buy again after selling in the same market window.')">?</span></span>
 </div>
 </div>
 
@@ -271,6 +300,24 @@ header h1{font-size:18px;color:#58a6ff}
 
 <script>
 const $=id=>document.getElementById(id);
+function hp(text){$('hText').textContent=text;$('hPop').classList.add('show');$('hOverlay').classList.add('show')}
+function closeHelp(){$('hPop').classList.remove('show');$('hOverlay').classList.remove('show')}
+const RISK_PROFILES={
+low:{trailing_stop_pct:0.25,stop_loss_pct:0.40,take_profit_ratio:0.92,min_signal_strength:0.45,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Holds positions longer, strict entry criteria, wider stops. Fewer trades, aims for bigger wins.'},
+med:{trailing_stop_pct:0.18,stop_loss_pct:0.30,take_profit_ratio:0.85,min_signal_strength:0.3,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate risk. Good mix of trade frequency and profit targets.'},
+high:{trailing_stop_pct:0.10,stop_loss_pct:0.20,take_profit_ratio:0.70,min_signal_strength:0.2,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, tight stops, takes profit quickly. More trades, re-entry enabled.'}
+};
+function setRisk(level){
+const p=RISK_PROFILES[level];if(!p)return;
+$('t2ts').value=p.trailing_stop_pct;$('t2slp').value=p.stop_loss_pct;$('t2tpr').value=p.take_profit_ratio;
+$('t2ms').value=p.min_signal_strength;$('t2et').value=p.entry_time_ratio;$('t2met').value=p.max_entry_time_ratio;
+$('t2ps').checked=p.position_scale;$('t2ar').checked=p.allow_reentry;$('t2mr').value=p.max_reentries;
+$('rDesc').textContent=p.desc;
+document.querySelectorAll('.risk-btn').forEach((b,i)=>{b.className='risk-btn';});
+const cls={low:'risk-low active',med:'risk-med active',high:'risk-high active'};
+const idx={low:0,med:1,high:2};
+document.querySelectorAll('.risk-btn')[idx[level]].className='risk-btn '+cls[level];
+}
 function tAgo(ts){const d=Math.floor((Date.now()-ts)/1000);if(d<60)return d+'s ago';if(d<3600)return Math.floor(d/60)+'m ago';return Math.floor(d/3600)+'h ago'}
 function fP(v){return(v>=0?'+':'')+('$'+v.toFixed(2))}
 
