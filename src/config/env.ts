@@ -6,7 +6,8 @@ export const PROXY_WALLET_ADDRESS = reteriveDotEnv("PROXY_WALLET_ADDRESS");
 function reteriveDotEnv(key: string): string {
     const env = process.env[key];
     if (!env) {
-        throw new Error(`${key} is not set`);
+        console.error(`WARNING: ${key} is not set. Trading will not work.`);
+        return "";
     }
     return env;
 }
