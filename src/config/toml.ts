@@ -1,5 +1,5 @@
-import fs from "fs";
-import TOML from "@iarna/toml";
+import * as fs from "fs";
+import * as TOML from "@iarna/toml";
 import { z } from "zod";
 
 const ConfigSchema = z.object({
