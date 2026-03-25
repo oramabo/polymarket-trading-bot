@@ -153,6 +153,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
                     }, undefined, OrderType.FAK); // FAK allows partial fills, FOK requires full fill
 
                     if (!result.success) {
+                        console.error("❌ Full API response:", JSON.stringify(result));
                         throw new Error("❌ Error buying up token: " + result.error);
                     }
 
@@ -170,7 +171,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Poll balance every 1 second until up token balance is received
             await this.waitForBalance("up");
         } catch (error: any) {
-            console.error("❌ Error buying up token:", error);
+            console.error("❌ Error buying up token:", error?.message || error);
             if (error?.status === 401 || error?.data?.error?.includes("Unauthorized")) {
                 console.error("⚠️  API authentication failed. Please check your API_KEY, SECRET_KEY, and PASSPHASE in your .env file.");
             }
@@ -234,6 +235,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
                     }, undefined, OrderType.FAK); // FAK allows partial fills, FOK requires full fill
 
                     if (!result.success) {
+                        console.error("❌ Full API response:", JSON.stringify(result));
                         throw new Error("❌ Error buying down token: " + result.error);
                     }
 
@@ -251,7 +253,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Poll balance every 1 second until down token balance is received
             await this.waitForBalance("down");
         } catch (error: any) {
-            console.error("❌ Error buying down token:", error);
+            console.error("❌ Error buying down token:", error?.message || error);
             if (error?.status === 401 || error?.data?.error?.includes("Unauthorized")) {
                 console.error("⚠️  API authentication failed. Please check your API_KEY, SECRET_KEY, and PASSPHASE in your .env file.");
             }
