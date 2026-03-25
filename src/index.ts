@@ -34,7 +34,9 @@ async function main() {
       SIGNER,
       apiKey, // Generated from L1 auth, API credentials enable L2 methods
       SIGNATURE_TYPE, // 2 for Gnosis Safe / Proxy wallet
-      FUNDER // Proxy wallet contract address (holds funds), SIGNER is the EOA that signs
+      FUNDER, // Proxy wallet contract address (holds funds), SIGNER is the EOA that signs
+      undefined, // geoBlockToken
+      true, // useServerTime - prevents clock skew "invalid signature" errors
     );
     const { slug, endTimestamp } = generateMarketSlug(marketConfig.coin, marketConfig.minutes);
     console.log(`🔍 Searching for market with slug: "${slug}"`);
