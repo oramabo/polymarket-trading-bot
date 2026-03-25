@@ -2,6 +2,7 @@ import { AssetType, OrderType, Side } from "@polymarket/clob-client";
 import { Market } from "../types.js";
 import { TxProcess } from "../constant/index.js";
 import { retryWithInstantRetry } from "../utils/retry.js";
+import { notifyBuy, notifySell } from "../services/telegram.js";
 
 declare module "./index.js" {
     interface Trade {
@@ -167,6 +168,10 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             // Mark as bought
             this.hasBought = true;
+            this.buyEntryPrice = price;
+
+            // Notify Telegram
+            await notifyBuy(this.label, "UP", roundedTradeAmount, price, this.marketSlug);
 
             // Poll balance every 1 second until up token balance is received
             await this.waitForBalance("up");
@@ -249,6 +254,10 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             // Mark as bought
             this.hasBought = true;
+            this.buyEntryPrice = price;
+
+            // Notify Telegram
+            await notifyBuy(this.label, "DOWN", roundedTradeAmount, price, this.marketSlug);
 
             // Poll balance every 1 second until down token balance is received
             await this.waitForBalance("down");
@@ -341,6 +350,9 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             console.log("✅ Order posted successfully:", order);
 
+            // Notify Telegram
+            await notifySell(this.label, "UP", size, price, this.buyEntryPrice, this.marketSlug);
+
             // Wait a bit for the order to settle, then check balances
             await new Promise(resolve => setTimeout(resolve, 2000));
             await this.updateTokenBalances();
@@ -348,7 +360,6 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Verify the sell was successful by checking that we no longer hold the token
             if (this.holdingStatus === Market.Up && this.share > 0) {
                 console.warn("⚠️  Sell order posted but tokens still held. May need more time to settle.");
-                // Still return true as the order was posted successfully
                 return true;
             }
 
@@ -444,6 +455,9 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             console.log("✅ Order posted successfully:", order);
 
+            // Notify Telegram
+            await notifySell(this.label, "DOWN", size, price, this.buyEntryPrice, this.marketSlug);
+
             // Wait a bit for the order to settle, then check balances
             await new Promise(resolve => setTimeout(resolve, 2000));
             await this.updateTokenBalances();
@@ -451,7 +465,6 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Verify the sell was successful by checking that we no longer hold the token
             if (this.holdingStatus === Market.Down && this.share > 0) {
                 console.warn("⚠️  Sell order posted but tokens still held. May need more time to settle.");
-                // Still return true as the order was posted successfully
                 return true;
             }
 

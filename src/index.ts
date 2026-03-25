@@ -5,6 +5,7 @@ import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE,
 import { getCurrentTime } from "./utils/index.js";
 import { loadConfig } from "./config/toml.js";
 import { Trade } from "./trade/index.js";
+import { notifySettlement } from "./services/telegram.js";
 
 loadConfig();
 
@@ -39,6 +40,7 @@ async function runCoin(coin: Coin, client: ClobClient) {
     const usd = globalThis.__CONFIG__.trade_usd;
 
     const trade = new Trade(usd, upTokenId, downTokenId, client, label, minutes);
+    trade.marketSlug = slug;
 
     while (true) {
       getPrices(upTokenId, downTokenId)
@@ -51,6 +53,11 @@ async function runCoin(coin: Coin, client: ClobClient) {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       if (endTimestamp - getCurrentTime() <= 0) {
+        // Notify if still holding tokens at market end
+        if (trade.holdingStatus !== "None" && trade.share > 0.1) {
+          const side = trade.holdingStatus === "Up" ? "UP" : "DOWN";
+          await notifySettlement(label, side as "UP" | "DOWN", trade.share, slug);
+        }
         break;
       }
     }
