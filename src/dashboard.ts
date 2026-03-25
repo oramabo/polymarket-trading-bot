@@ -178,17 +178,6 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="help-pop" id="hPop"><span id="hText"></span></div>
 
 <div class="card">
-<h2>Risk Profile</h2>
-<p class="card-desc">Choose a preset risk level. This adjusts all trading parameters at once.</p>
-<div class="risk-row">
-<div class="risk-btn" onclick="setRisk('low')">Conservative</div>
-<div class="risk-btn" onclick="setRisk('med')">Balanced</div>
-<div class="risk-btn" onclick="setRisk('high')">Aggressive</div>
-</div>
-<div class="risk-desc" id="rDesc">Select a profile to auto-fill settings, or customize manually below.</div>
-</div>
-
-<div class="card">
 <h2>Live Positions</h2>
 <p class="card-desc">Real-time view of active positions across all coins. Updates every 2 seconds.</p>
 <div class="positions-grid" id="pGrid"><div class="empty">Waiting for data...</div></div>
@@ -292,6 +281,17 @@ header h1{font-size:18px;color:#58a6ff}
 <label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label>
 <span class="tl" >Allow Re-entry <span class="help" onclick="hp('Buy again after selling in the same market window.')">?</span></span>
 </div>
+</div>
+
+<div class="card">
+<h2>Risk Profile</h2>
+<p class="card-desc">Quick presets that auto-fill all Trade 2 parameters. You can customize individually after selecting.</p>
+<div class="risk-row">
+<div class="risk-btn" onclick="setRisk('low')">Conservative</div>
+<div class="risk-btn" onclick="setRisk('med')">Balanced</div>
+<div class="risk-btn" onclick="setRisk('high')">Aggressive</div>
+</div>
+<div class="risk-desc" id="rDesc">Select a profile to auto-fill settings, or customize manually above.</div>
 </div>
 
 <button class="btn" id="saveBtn" onclick="save()">Save Settings</button>
