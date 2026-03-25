@@ -13,11 +13,12 @@ export class Trade {
 
     prevUpBuyPrice!: [number, number];
     prevDownBuyPrice!: [number, number];
+    priceHistory!: number[];
 
     prevUpTokenBalance!: number;
     prevDownTokenBalance!: number;
 
-    hasBought!: boolean; // Track if we've already made a buy order
+    hasBought!: boolean;
     quitMarket!: boolean;
     marketTime!: number;
     remainingTime!: number;
@@ -33,6 +34,10 @@ export class Trade {
     txProcess: { current: TxProcess };
     buyEntryPrice: number;
     marketSlug: string;
+    peakPrice: number;
+    entryTime: number;
+    tradeCount: number;
+    lastPriceTimestamp: number;
 
     constructor(
         usd: number,
@@ -56,6 +61,7 @@ export class Trade {
         this.downSellPrice = 0;
         this.prevUpBuyPrice = [0, 0];
         this.prevDownBuyPrice = [0, 0];
+        this.priceHistory = [];
         this.prevUpTokenBalance = 0;
         this.prevDownTokenBalance = 0;
         this.hasBought = false;
@@ -64,6 +70,10 @@ export class Trade {
         this.remainingTime = this.marketTime;
         this.buyEntryPrice = 0;
         this.marketSlug = "";
+        this.peakPrice = 0;
+        this.entryTime = 0;
+        this.tradeCount = 0;
+        this.lastPriceTimestamp = Date.now();
 
         this.authorizedClob = authorizedClob;
     }

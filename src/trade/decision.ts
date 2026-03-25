@@ -1,5 +1,6 @@
 import { TxProcess } from "../constant/index.js";
 import { Market } from "../types.js";
+import { getSignalStrength, getDirection, scalePosition } from "./signals.js";
 
 // Declare module augmentation to add cancel method to Trade class
 declare module "./index.js" {
@@ -12,19 +13,15 @@ declare module "./index.js" {
 export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
     TradeClass.prototype.make_trading_decision = async function (): Promise<void> {
 
-        let remaining_time_ratio =
+        const remaining_time_ratio =
             (this.marketTime - this.remainingTime) / this.marketTime;
 
-        let up_price_ratio = Math.abs(this.upBuyPrice - 0.5) / 0.5;
-
-        if (this.prevUpBuyPrice[0] || this.prevUpBuyPrice[1]) {
-            Market.None;
-        }
+        const up_price_ratio = Math.abs(this.upBuyPrice - 0.5) / 0.5;
 
         if (this.txProcess.current === TxProcess.Working) {
             console.log(`[${this.label}] Trading is already in progress`);
             return;
-        };
+        }
 
         switch (globalThis.__CONFIG__.strategy) {
             case "trade_1": {
@@ -33,10 +30,10 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
                 if (exitTime || exitPrice) {
                     switch (this.holdingStatus) {
                         case Market.Up:
-                            await this.sellUpToken();
+                            await this.sellUpToken("time/price exit");
                             break;
                         case Market.Down:
-                            await this.sellDownToken();
+                            await this.sellDownToken("time/price exit");
                             break;
                         default:
                             break;
@@ -45,79 +42,102 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
                 break;
             }
 
-            case "trade_2":
-                const exitRanges = globalThis.__CONFIG__.trade_2.exit_price_ratio_range;
-                const inExitRange = exitRanges.some(([min, max]) => up_price_ratio >= min && up_price_ratio <= max);
-                const [entry_price_ratio_min, entry_price_ratio_max] = globalThis.__CONFIG__.trade_2.entry_price_ratio;
-                const entry_time_ratio = globalThis.__CONFIG__.trade_2.entry_time_ratio;
-                const inEntryPriceRange = up_price_ratio >= entry_price_ratio_min && up_price_ratio <= entry_price_ratio_max;
-
-                // Don't try to sell in the last 30 seconds — no liquidity
+            case "trade_2": {
+                const cfg = globalThis.__CONFIG__.trade_2;
                 const tooLateToSell = remaining_time_ratio > 0.9 && this.remainingTime < 30;
 
-                switch (this.holdingStatus) {
-                    case Market.Up:
-                        if (inExitRange && !tooLateToSell) {
-                            const sellSuccess = await this.sellUpToken();
+                // ========= EXIT LOGIC (when holding a position) =========
+                if (this.holdingStatus === Market.Up || this.holdingStatus === Market.Down) {
+                    const isHoldingUp = this.holdingStatus === Market.Up;
+                    const currentFavorablePrice = isHoldingUp ? this.upBuyPrice : this.downBuyPrice;
 
-                            if (sellSuccess) {
-                                // Check if in emergency swap price range to immediately buy opposite token
-                                const emergencySwapPrice = globalThis.__CONFIG__.trade_2.emergency_swap_price;
-                                if (emergencySwapPrice) {
-                                    const [emergencyMin, emergencyMax] = emergencySwapPrice;
-                                    const inEmergencySwapRange = up_price_ratio >= emergencyMin && up_price_ratio <= emergencyMax;
-                                    if (inEmergencySwapRange) {
-                                        console.log("🔄 Emergency swap: buying down token after successful sell");
-                                        await this.buyDownToken();
-                                    }
-                                }
-                            } else {
-                                console.warn("⚠️  Sell failed, skipping emergency swap buy");
-                            }
-                        }
-                        break;
-                    case Market.Down:
-                        if (inExitRange && !tooLateToSell) {
-                            const sellSuccess = await this.sellDownToken();
+                    // Calculate unrealized PnL percentage
+                    const unrealizedPnlPct = this.buyEntryPrice > 0
+                        ? (currentFavorablePrice - this.buyEntryPrice) / this.buyEntryPrice
+                        : 0;
 
-                            // Only proceed with emergency buy if sell was successful
-                            if (sellSuccess) {
-                                // Check if in emergency swap price range to immediately buy opposite token
-                                const emergencySwapPrice = globalThis.__CONFIG__.trade_2.emergency_swap_price;
-                                if (emergencySwapPrice) {
-                                    const [emergencyMin, emergencyMax] = emergencySwapPrice;
-                                    const inEmergencySwapRange = up_price_ratio >= emergencyMin && up_price_ratio <= emergencyMax;
-                                    if (inEmergencySwapRange) {
-                                        console.log("🔄 Emergency swap: buying up token after successful sell");
-                                        await this.buyUpToken();
-                                    }
-                                }
-                            } else {
-                                console.warn("⚠️  Sell failed, skipping emergency swap buy");
-                            }
+                    // 1. Trailing stop: price dropped from peak
+                    if (this.peakPrice > 0 && !tooLateToSell) {
+                        const dropFromPeak = (this.peakPrice - currentFavorablePrice) / this.peakPrice;
+                        if (dropFromPeak > cfg.trailing_stop_pct && unrealizedPnlPct > 0) {
+                            console.log(`[${this.label}] Trailing stop triggered: ${(dropFromPeak * 100).toFixed(1)}% drop from peak`);
+                            if (isHoldingUp) await this.sellUpToken("trailing stop");
+                            else await this.sellDownToken("trailing stop");
+                            break;
                         }
-                        break;
+                    }
 
-                    default:
-                        // Only buy if we haven't bought yet
-                        // Check if price ratio is within entry range and time ratio is met
-                        if (!this.hasBought && remaining_time_ratio > entry_time_ratio && inEntryPriceRange) {
-                            if (this.upBuyPrice > this.downBuyPrice) {
-                                this.buyUpToken();
-                            } else {
-                                this.buyDownToken();
-                            }
-                        }
+                    // 2. Stop-loss: cut losses
+                    if (unrealizedPnlPct < -cfg.stop_loss_pct && !tooLateToSell) {
+                        console.log(`[${this.label}] Stop-loss triggered: ${(unrealizedPnlPct * 100).toFixed(1)}% loss`);
+                        if (isHoldingUp) await this.sellUpToken("stop loss");
+                        else await this.sellDownToken("stop loss");
                         break;
+                    }
+
+                    // 3. Take-profit: price ratio very favorable
+                    if (up_price_ratio >= cfg.take_profit_ratio && !tooLateToSell) {
+                        console.log(`[${this.label}] Take-profit triggered: price ratio ${up_price_ratio.toFixed(2)}`);
+                        if (isHoldingUp) await this.sellUpToken("take profit");
+                        else await this.sellDownToken("take profit");
+                        break;
+                    }
+
+                    // 4. Legacy exit ranges (kept for backward compat)
+                    const exitRanges = cfg.exit_price_ratio_range;
+                    const inExitRange = exitRanges.some(([min, max]: [number, number]) => up_price_ratio >= min && up_price_ratio <= max);
+                    if (inExitRange && !tooLateToSell) {
+                        if (isHoldingUp) await this.sellUpToken("exit range");
+                        else await this.sellDownToken("exit range");
+                        break;
+                    }
+
+                    break; // holding but no exit condition met
                 }
 
+                // ========= ENTRY LOGIC (when not holding) =========
+                const canEnter = !this.hasBought || (cfg.allow_reentry && this.tradeCount < cfg.max_reentries);
+                if (!canEnter) break;
 
+                // Need enough price history for signals
+                if (this.priceHistory.length < 5) break;
 
+                // Time window check
+                const maxEntry = cfg.max_entry_time_ratio ?? 0.85;
+                if (remaining_time_ratio < cfg.entry_time_ratio || remaining_time_ratio > maxEntry) break;
+
+                // Signal strength check
+                const signal = getSignalStrength(this.priceHistory, remaining_time_ratio);
+                const minSignal = cfg.min_signal_strength ?? 0.3;
+                if (signal < minSignal) break;
+
+                // Direction check
+                const direction = getDirection(this.priceHistory);
+                if (direction === "NONE") break;
+
+                // Price ratio must be in entry range
+                const [entryMin, entryMax] = cfg.entry_price_ratio;
+                if (up_price_ratio < entryMin || up_price_ratio > entryMax) break;
+
+                // Position sizing
+                const tradeAmount = scalePosition(
+                    globalThis.__CONFIG__.trade_usd,
+                    signal,
+                    cfg.position_scale ?? true
+                );
+
+                console.log(`[${this.label}] Entry signal: ${direction} | strength: ${signal.toFixed(2)} | amount: $${tradeAmount.toFixed(2)}`);
+
+                if (direction === "UP") {
+                    await this.buyUpToken(tradeAmount);
+                } else {
+                    await this.buyDownToken(tradeAmount);
+                }
                 break;
+            }
+
             default:
                 break;
         }
-
-
     };
 }

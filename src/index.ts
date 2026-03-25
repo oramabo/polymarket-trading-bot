@@ -5,8 +5,9 @@ import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE,
 import { getCurrentTime } from "./utils/index.js";
 import { loadConfig } from "./config/toml.js";
 import { Trade } from "./trade/index.js";
-import { notifySettlement } from "./services/telegram.js";
+import { notifySettlement, notifyError } from "./services/telegram.js";
 import { startDashboard } from "./dashboard.js";
+import { botState, logTrade } from "./state.js";
 
 loadConfig();
 startDashboard();
@@ -43,20 +44,36 @@ async function runCoin(coin: Coin, client: ClobClient) {
     const trade = new Trade(usd, upTokenId, downTokenId, client, label, minutes);
     trade.marketSlug = slug;
 
+    let stalePriceAlerted = false;
+
     while (true) {
       getPrices(upTokenId, downTokenId)
         .then(async e => {
+          stalePriceAlerted = false;
           trade.updatePrices(endTimestamp - getCurrentTime(), e[upTokenId].BUY, e[upTokenId].SELL, e[downTokenId].BUY, e[downTokenId].SELL);
           await trade.make_trading_decision();
         })
-        .catch(e => console.error(`[${label}]`, e));
+        .catch(e => {
+          console.error(`[${label}]`, e);
+          // Stale price detection
+          const lastUpdate = botState.lastPriceUpdate.get(label) || Date.now();
+          const staleSecs = Math.round((Date.now() - lastUpdate) / 1000);
+          if (staleSecs > 5) {
+            console.warn(`[${label}] Stale prices (${staleSecs}s since last update)`);
+            if (staleSecs > 30 && !stalePriceAlerted) {
+              stalePriceAlerted = true;
+              notifyError(label, "price_feed", `Prices stale for ${staleSecs}s, skipping trades`);
+            }
+          }
+        });
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       if (endTimestamp - getCurrentTime() <= 0) {
-        // Notify if still holding tokens at market end
+        // Notify and log if still holding tokens at market end
         if (trade.holdingStatus !== "None" && trade.share > 0.1) {
           const side = trade.holdingStatus === "Up" ? "UP" : "DOWN";
+          logTrade({ coin: label, side: side as "UP" | "DOWN", action: "SETTLE", price: side === "UP" ? trade.upBuyPrice : trade.downBuyPrice, amount: trade.share * (side === "UP" ? trade.upBuyPrice : trade.downBuyPrice), shares: trade.share, pnl: 0, reason: "market ended", timestamp: Date.now() });
           await notifySettlement(label, side as "UP" | "DOWN", trade.share, slug);
         }
         break;

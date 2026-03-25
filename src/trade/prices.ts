@@ -1,5 +1,9 @@
 import { Market } from "../types.js";
 import { TxProcess } from "../constant/index.js";
+import { botState, updatePosition } from "../state.js";
+import { getSignalStrength } from "./signals.js";
+
+const MAX_PRICE_HISTORY = 30;
 
 declare module "./index.js" {
     interface Trade {
@@ -82,26 +86,53 @@ export function attachPricesMethods(TradeClass: new (...args: any[]) => any) {
             ).toFixed(2)}`
         );
 
+        // Update legacy prev price tracking
         if (this.upBuyPrice !== this.prevUpBuyPrice[1]) {
-            this.prevUpBuyPrice = [
-                this.prevUpBuyPrice[1],
-                this.upBuyPrice,
-            ];
+            this.prevUpBuyPrice = [this.prevUpBuyPrice[1], this.upBuyPrice];
         }
-
         if (this.downBuyPrice !== this.prevDownBuyPrice[1]) {
-            this.prevDownBuyPrice = [
-                this.prevDownBuyPrice[1],
-                this.downBuyPrice,
-            ];
+            this.prevDownBuyPrice = [this.prevDownBuyPrice[1], this.downBuyPrice];
         }
 
+        // Update current prices
         this.upBuyPrice = up_buy_price;
         this.upSellPrice = up_sell_price;
         this.downBuyPrice = down_buy_price;
         this.downSellPrice = down_sell_price;
-
         this.remainingTime = remaining_time;
+
+        // Deep price history (30 ticks)
+        this.priceHistory.push(up_buy_price);
+        if (this.priceHistory.length > MAX_PRICE_HISTORY) {
+            this.priceHistory.shift();
+        }
+        this.lastPriceTimestamp = Date.now();
+        botState.lastPriceUpdate.set(this.label, Date.now());
+
+        // Track peak price for trailing stop
+        if (this.holdingStatus === Market.Up) {
+            this.peakPrice = Math.max(this.peakPrice, up_buy_price);
+        } else if (this.holdingStatus === Market.Down) {
+            this.peakPrice = Math.max(this.peakPrice, down_buy_price);
+        }
+
+        // Update shared state for dashboard
+        const unrealizedPnl = this.holdingStatus !== Market.None && this.buyEntryPrice > 0
+            ? ((this.holdingStatus === Market.Up ? up_buy_price : down_buy_price) - this.buyEntryPrice) * this.share
+            : 0;
+        const signal = this.priceHistory.length >= 5
+            ? getSignalStrength(this.priceHistory, remainingTimeRatio)
+            : 0;
+        updatePosition(this.label, {
+            coin: this.label,
+            side: this.holdingStatus === Market.Up ? "UP" : this.holdingStatus === Market.Down ? "DOWN" : "NONE",
+            entryPrice: this.buyEntryPrice,
+            currentPrice: up_buy_price,
+            shares: this.share,
+            unrealizedPnl,
+            signalStrength: signal,
+            timestamp: Date.now(),
+        });
 
         this.displayBalance();
     };
