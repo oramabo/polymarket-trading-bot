@@ -9,6 +9,7 @@ const ConfigSchema = z.object({
   market: z.object({
     market_coins: z.array(z.enum(["btc", "eth", "sol", "xrp"])),
     market_period: z.enum(["5", "15", "60", "240", "1440"]),
+    btc_period: z.enum(["5", "15", "60", "240", "1440"]).optional(),
   }),
   trade_1: z.object({
     entry_price_range: z.tuple([z.number(), z.number()]),

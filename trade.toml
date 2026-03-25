@@ -4,7 +4,8 @@ max_retries = 3
 
 [market]
 market_coins = ["btc", "eth", "sol", "xrp"]
-market_period = "15" # 5 (BTC only) / 15 / 60 / 240 / 1440
+market_period = "15" # default period: 15 / 60 / 240 / 1440
+btc_period = "5"     # BTC supports 5m markets
 
 [trade_1]
 entry_price_range = [0.4, 0.6]

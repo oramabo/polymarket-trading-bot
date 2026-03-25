@@ -8,10 +8,17 @@ import { Trade } from "./trade/index.js";
 
 loadConfig();
 
-const minutes = parseInt(globalThis.__CONFIG__.market.market_period) as Minutes;
+const defaultMinutes = parseInt(globalThis.__CONFIG__.market.market_period) as Minutes;
+
+function getMinutesForCoin(coin: Coin): Minutes {
+  const cfg = globalThis.__CONFIG__.market as any;
+  const override = cfg[`${coin}_period`];
+  return override ? parseInt(override) as Minutes : defaultMinutes;
+}
 
 async function runCoin(coin: Coin, client: ClobClient) {
   const label = coin.toUpperCase();
+  const minutes = getMinutesForCoin(coin);
 
   while (true) {
     const { slug, endTimestamp } = generateMarketSlug(coin, minutes);
@@ -31,7 +38,7 @@ async function runCoin(coin: Coin, client: ClobClient) {
     const downTokenId = JSON.parse(market.clobTokenIds)[1];
     const usd = globalThis.__CONFIG__.trade_usd;
 
-    const trade = new Trade(usd, upTokenId, downTokenId, client, label);
+    const trade = new Trade(usd, upTokenId, downTokenId, client, label, minutes);
 
     while (true) {
       getPrices(upTokenId, downTokenId)
