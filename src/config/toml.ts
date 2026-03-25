@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as TOML from "@iarna/toml";
 import { z } from "zod";
 
-const ConfigSchema = z.object({
+export const ConfigSchema = z.object({
   strategy: z.enum(["trade_1", "trade_2"]),
   trade_usd: z.number(),
   max_retries: z.number().default(3),
@@ -22,8 +22,16 @@ const ConfigSchema = z.object({
   trade_2: z.object({
     entry_price_ratio: z.tuple([z.number(), z.number()]),
     entry_time_ratio: z.number(),
+    max_entry_time_ratio: z.number().default(0.85),
     exit_price_ratio_range: z.tuple([z.tuple([z.number(), z.number()]), z.tuple([z.number(), z.number()])]),
     emergency_swap_price: z.tuple([z.number(), z.number()]).optional(),
+    trailing_stop_pct: z.number().default(0.15),
+    stop_loss_pct: z.number().default(0.30),
+    take_profit_ratio: z.number().default(0.80),
+    min_signal_strength: z.number().default(0.3),
+    position_scale: z.boolean().default(true),
+    allow_reentry: z.boolean().default(false),
+    max_reentries: z.number().default(2),
   }),
 });
 

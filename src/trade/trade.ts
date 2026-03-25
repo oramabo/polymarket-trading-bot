@@ -3,6 +3,7 @@ import { Market } from "../types.js";
 import { TxProcess } from "../constant/index.js";
 import { retryWithInstantRetry } from "../utils/retry.js";
 import { notifyBuy, notifySell } from "../services/telegram.js";
+import { logTrade } from "../state.js";
 
 declare module "./index.js" {
     interface Trade {
@@ -100,9 +101,10 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         throw new Error(`⏱️  Timeout: ${tokenType} token balance not received within ${timeoutMs / 1000} seconds`);
     };
 
-    TradeClass.prototype.buyUpToken = async function (): Promise<void> {
-        // Only allow one buy per market
-        if (this.hasBought) {
+    TradeClass.prototype.buyUpToken = async function (overrideAmount?: number): Promise<void> {
+        // Check re-entry rules
+        const cfg2 = globalThis.__CONFIG__.trade_2;
+        if (this.hasBought && !(cfg2.allow_reentry && this.tradeCount < cfg2.max_reentries)) {
             console.log("⏭️  Already bought in this market, skipping");
             return;
         }
@@ -112,17 +114,15 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return;
         }
 
-        // Calculate size based on available USD and trade_usd config
-        const tradeAmount = globalThis.__CONFIG__.trade_usd || this.usd;
+        // Calculate size based on override, config, or balance
+        const tradeAmount = overrideAmount || globalThis.__CONFIG__.trade_usd || this.usd;
 
         if (!tradeAmount || isNaN(tradeAmount) || tradeAmount <= 0) {
             console.error("Cannot buy up token: invalid trade amount");
             return;
         }
 
-        // Round trade amount to 2 decimal places for buying
         const roundedTradeAmount = Math.round(tradeAmount * 100) / 100;
-
         const size = Math.floor(roundedTradeAmount / this.upBuyPrice);
 
         if (size <= 0 || isNaN(size) || !isFinite(size)) {
@@ -169,11 +169,12 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Mark as bought
             this.hasBought = true;
             this.buyEntryPrice = price;
+            this.entryTime = Date.now();
+            this.tradeCount++;
+            this.peakPrice = price;
 
-            // Notify Telegram
+            logTrade({ coin: this.label, side: "UP", action: "BUY", price, amount: roundedTradeAmount, shares: roundedTradeAmount / price, pnl: 0, reason: "entry", timestamp: Date.now() });
             await notifyBuy(this.label, "UP", roundedTradeAmount, price, this.marketSlug);
-
-            // Poll balance every 1 second until up token balance is received
             await this.waitForBalance("up");
         } catch (error: any) {
             console.error("❌ Error buying up token:", error?.message || error);
@@ -185,9 +186,10 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         }
     };
 
-    TradeClass.prototype.buyDownToken = async function (): Promise<void> {
-        // Only allow one buy per market
-        if (this.hasBought) {
+    TradeClass.prototype.buyDownToken = async function (overrideAmount?: number): Promise<void> {
+        // Check re-entry rules
+        const cfg2 = globalThis.__CONFIG__.trade_2;
+        if (this.hasBought && !(cfg2.allow_reentry && this.tradeCount < cfg2.max_reentries)) {
             console.log("⏭️  Already bought in this market, skipping");
             return;
         }
@@ -197,17 +199,14 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return;
         }
 
-        // Calculate size based on available USD and trade_usd config
-        const tradeAmount = globalThis.__CONFIG__.trade_usd || this.usd;
+        const tradeAmount = overrideAmount || globalThis.__CONFIG__.trade_usd || this.usd;
 
         if (!tradeAmount || isNaN(tradeAmount) || tradeAmount <= 0) {
             console.error("Cannot buy down token: invalid trade amount");
             return;
         }
 
-        // Round trade amount to 2 decimal places for buying
         const roundedTradeAmount = Math.round(tradeAmount * 100) / 100;
-
         const size = Math.floor(roundedTradeAmount / this.downBuyPrice);
 
         if (size <= 0 || isNaN(size) || !isFinite(size)) {
@@ -255,11 +254,12 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             // Mark as bought
             this.hasBought = true;
             this.buyEntryPrice = price;
+            this.entryTime = Date.now();
+            this.tradeCount++;
+            this.peakPrice = price;
 
-            // Notify Telegram
+            logTrade({ coin: this.label, side: "DOWN", action: "BUY", price, amount: roundedTradeAmount, shares: roundedTradeAmount / price, pnl: 0, reason: "entry", timestamp: Date.now() });
             await notifyBuy(this.label, "DOWN", roundedTradeAmount, price, this.marketSlug);
-
-            // Poll balance every 1 second until down token balance is received
             await this.waitForBalance("down");
         } catch (error: any) {
             console.error("❌ Error buying down token:", error?.message || error);
@@ -271,7 +271,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         }
     };
 
-    TradeClass.prototype.sellUpToken = async function (): Promise<boolean> {
+    TradeClass.prototype.sellUpToken = async function (sellReason: string = "exit"): Promise<boolean> {
         if (!this.upTokenId || !this.upSellPrice || this.upSellPrice <= 0 || isNaN(this.upSellPrice)) {
             console.error("Cannot sell up token: missing tokenId or invalid price");
             return false;
@@ -350,17 +350,23 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             console.log("✅ Order posted successfully:", order);
 
-            // Notify Telegram
+            const pnl = (price - this.buyEntryPrice) * size;
+            logTrade({ coin: this.label, side: "UP", action: "SELL", price, amount: size * price, shares: size, pnl, reason: sellReason, timestamp: Date.now() });
             await notifySell(this.label, "UP", size, price, this.buyEntryPrice, this.marketSlug);
 
-            // Wait a bit for the order to settle, then check balances
             await new Promise(resolve => setTimeout(resolve, 2000));
             await this.updateTokenBalances();
 
-            // Verify the sell was successful by checking that we no longer hold the token
             if (this.holdingStatus === Market.Up && this.share > 0) {
-                console.warn("⚠️  Sell order posted but tokens still held. May need more time to settle.");
+                console.warn("⚠️  Sell order posted but tokens still held.");
                 return true;
+            }
+
+            // Reset for potential re-entry
+            this.peakPrice = 0;
+            const cfg2 = globalThis.__CONFIG__.trade_2;
+            if (cfg2.allow_reentry) {
+                this.hasBought = false;
             }
 
             console.log("✅ Sell confirmed: tokens successfully sold");
@@ -376,7 +382,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         }
     };
 
-    TradeClass.prototype.sellDownToken = async function (): Promise<boolean> {
+    TradeClass.prototype.sellDownToken = async function (sellReason: string = "exit"): Promise<boolean> {
         if (!this.downTokenId || !this.downSellPrice || this.downSellPrice <= 0 || isNaN(this.downSellPrice)) {
             console.error("Cannot sell down token: missing tokenId or invalid price");
             return false;
@@ -455,17 +461,22 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
             console.log("✅ Order posted successfully:", order);
 
-            // Notify Telegram
+            const pnl = (price - this.buyEntryPrice) * size;
+            logTrade({ coin: this.label, side: "DOWN", action: "SELL", price, amount: size * price, shares: size, pnl, reason: sellReason, timestamp: Date.now() });
             await notifySell(this.label, "DOWN", size, price, this.buyEntryPrice, this.marketSlug);
 
-            // Wait a bit for the order to settle, then check balances
             await new Promise(resolve => setTimeout(resolve, 2000));
             await this.updateTokenBalances();
 
-            // Verify the sell was successful by checking that we no longer hold the token
             if (this.holdingStatus === Market.Down && this.share > 0) {
-                console.warn("⚠️  Sell order posted but tokens still held. May need more time to settle.");
+                console.warn("⚠️  Sell order posted but tokens still held.");
                 return true;
+            }
+
+            this.peakPrice = 0;
+            const cfg2 = globalThis.__CONFIG__.trade_2;
+            if (cfg2.allow_reentry) {
+                this.hasBought = false;
             }
 
             console.log("✅ Sell confirmed: tokens successfully sold");
