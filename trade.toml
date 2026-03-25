@@ -1,5 +1,5 @@
 strategy = "trade_2"
-trade_usd = 10
+trade_usd = 5
 max_retries = 3
 
 [market]
@@ -18,5 +18,5 @@ exit_price_ratio = 0.98
 [trade_2]
 entry_price_ratio = [0.2, 0.95]
 entry_time_ratio = 0.4
-exit_price_ratio_range = [[0.6, 1.0], [0.6, 1.0]]
-emergency_swap_price = [0.0, 0.5]
+exit_price_ratio_range = [[1.0, 1.0], [1.0, 1.0]]
+emergency_swap_price = [1.0, 1.0]
