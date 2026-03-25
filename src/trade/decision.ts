@@ -1,4 +1,4 @@
-import { GLOBAL_TX_PROCESS, TxProcess } from "../constant/index.js";
+import { TxProcess } from "../constant/index.js";
 import { Market } from "../types.js";
 
 // Declare module augmentation to add cancel method to Trade class
@@ -21,8 +21,8 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
             Market.None;
         }
 
-        if (GLOBAL_TX_PROCESS.current === TxProcess.Working) {
-            console.log("Trading is already in progress");
+        if (this.txProcess.current === TxProcess.Working) {
+            console.log(`[${this.label}] Trading is already in progress`);
             return;
         };
 

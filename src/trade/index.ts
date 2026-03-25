@@ -1,5 +1,6 @@
 import { ClobClient, Side } from "@polymarket/clob-client";
 import { Market } from "../types.js";
+import { TxProcess } from "../constant/index.js";
 
 export class Trade {
     usd!: number;
@@ -27,17 +28,22 @@ export class Trade {
     upTokenId: string;
     downTokenId: string;
 
-    authorizedClob: ClobClient
+    authorizedClob: ClobClient;
+    label: string;
+    txProcess: { current: TxProcess };
 
     constructor(
         usd: number,
         upTokenId: string,
         downTokenId: string,
-        authorizedClob: ClobClient
+        authorizedClob: ClobClient,
+        label: string = ""
     ) {
         this.usd = usd;
         this.upTokenId = upTokenId;
         this.downTokenId = downTokenId;
+        this.label = label;
+        this.txProcess = { current: TxProcess.Idle };
 
         this.share = 0;
         this.holdingStatus = Market.None;

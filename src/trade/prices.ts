@@ -1,5 +1,5 @@
 import { Market } from "../types.js";
-import { GLOBAL_TX_PROCESS, TxProcess } from "../constant/index.js";
+import { TxProcess } from "../constant/index.js";
 
 declare module "./index.js" {
     interface Trade {
@@ -51,12 +51,13 @@ export function attachPricesMethods(TradeClass: new (...args: any[]) => any) {
                     ? "🔴"
                     : "⚫";
 
+        const label = this.label ? `[${this.label}] ` : "";
         console.log(
-            `💰 Balance | USD: $${this.usd.toFixed(2)} | Shares: ${this.share.toFixed(
+            `${label}💰 Balance | USD: $${this.usd.toFixed(2)} | Shares: ${this.share.toFixed(
                 2
             )} (${holdingStr} ) | Share Value: $${shareValue.toFixed(
                 2
-            )} | Total: $${totalValue.toFixed(2)} | ${GLOBAL_TX_PROCESS.current === TxProcess.Working ? "Working" : "Idle"}, Trend: ${trend}`
+            )} | Total: $${totalValue.toFixed(2)} | ${this.txProcess.current === TxProcess.Working ? "Working" : "Idle"}, Trend: ${trend}`
         );
     };
 
@@ -72,8 +73,9 @@ export function attachPricesMethods(TradeClass: new (...args: any[]) => any) {
 
         const upPriceRatio = Math.abs(up_buy_price - 0.5) / 0.5;
 
+        const lbl = this.label ? `[${this.label}] ` : "";
         console.log(
-            `BUY | ${remaining_time} / ${this.marketTime} | ↑ (${this.prevUpBuyPrice[0]}, ${this.prevUpBuyPrice[1]}) ${up_buy_price} ↓ (${this.prevDownBuyPrice[0]}, ${this.prevDownBuyPrice[1]}) ${down_buy_price} | TIME RATIO ${remainingTimeRatio.toFixed(
+            `${lbl}BUY | ${remaining_time} / ${this.marketTime} | ↑ (${this.prevUpBuyPrice[0]}, ${this.prevUpBuyPrice[1]}) ${up_buy_price} ↓ (${this.prevDownBuyPrice[0]}, ${this.prevDownBuyPrice[1]}) ${down_buy_price} | TIME RATIO ${remainingTimeRatio.toFixed(
                 2
             )} | UP PRICE RATIO ${upPriceRatio.toFixed(2)} | PRODUCT ${(
                 remainingTimeRatio * upPriceRatio
