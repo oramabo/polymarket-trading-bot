@@ -106,4 +106,8 @@ async function main() {
   await Promise.all(coins.map(coin => runCoin(coin, client)));
 }
 
-main();
+main().catch(err => {
+  console.error("Fatal error in main():", err);
+  console.log("Dashboard is still running. Fix the issue and restart.");
+  // Keep process alive for dashboard access
+});
