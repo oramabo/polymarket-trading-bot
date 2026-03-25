@@ -587,7 +587,7 @@ export function startDashboard() {
     res.end("Not found");
   });
 
-  server.listen(port, () => {
-    console.log(`Dashboard running on port ${port}`);
+  server.listen(Number(port), "0.0.0.0", () => {
+    console.log(`Dashboard running on 0.0.0.0:${port}`);
   });
 }
