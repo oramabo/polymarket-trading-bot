@@ -1,6 +1,6 @@
 import { AssetType, OrderType, Side } from "@polymarket/clob-client";
 import { Market } from "../types.js";
-import { GLOBAL_TX_PROCESS, TxProcess } from "../constant/index.js";
+import { TxProcess } from "../constant/index.js";
 import { retryWithInstantRetry } from "../utils/retry.js";
 
 declare module "./index.js" {
@@ -137,7 +137,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         }
 
         try {
-            GLOBAL_TX_PROCESS.current = TxProcess.Working;
+            this.txProcess.current = TxProcess.Working;
             
             const maxRetries = globalThis.__CONFIG__?.max_retries || 3;
             
@@ -176,7 +176,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
                 console.error("⚠️  API authentication failed. Please check your API_KEY, SECRET_KEY, and PASSPHASE in your .env file.");
             }
         } finally {
-            GLOBAL_TX_PROCESS.current = TxProcess.Idle;
+            this.txProcess.current = TxProcess.Idle;
         }
     };
 
@@ -219,7 +219,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
 
         console.log("buying down token", { tokenID: this.downTokenId, price: price, size });
         try {
-            GLOBAL_TX_PROCESS.current = TxProcess.Working;
+            this.txProcess.current = TxProcess.Working;
             
             const maxRetries = globalThis.__CONFIG__?.max_retries || 3;
             
@@ -258,7 +258,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
                 console.error("⚠️  API authentication failed. Please check your API_KEY, SECRET_KEY, and PASSPHASE in your .env file.");
             }
         } finally {
-            GLOBAL_TX_PROCESS.current = TxProcess.Idle;
+            this.txProcess.current = TxProcess.Idle;
         }
     };
 
@@ -266,6 +266,14 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         if (!this.upTokenId || !this.upSellPrice || this.upSellPrice <= 0 || isNaN(this.upSellPrice)) {
             console.error("Cannot sell up token: missing tokenId or invalid price");
             return false;
+        }
+
+        // Skip selling dust amounts (less than $0.10 worth)
+        if (this.share < 0.1) {
+            console.log("⏭️  Skipping sell: dust amount (< 0.1 shares)");
+            this.holdingStatus = Market.None;
+            this.share = 0;
+            return true;
         }
 
         // Refresh balance from API before selling to get accurate balance
@@ -319,7 +327,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             share: this.share 
         });
         try {
-            GLOBAL_TX_PROCESS.current = TxProcess.Working;
+            this.txProcess.current = TxProcess.Working;
             
             const maxRetries = globalThis.__CONFIG__?.max_retries || 3;
             
@@ -364,7 +372,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             }
             return false;
         } finally {
-            GLOBAL_TX_PROCESS.current = TxProcess.Idle;
+            this.txProcess.current = TxProcess.Idle;
         }
     };
 
@@ -372,6 +380,14 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         if (!this.downTokenId || !this.downSellPrice || this.downSellPrice <= 0 || isNaN(this.downSellPrice)) {
             console.error("Cannot sell down token: missing tokenId or invalid price");
             return false;
+        }
+
+        // Skip selling dust amounts (less than $0.10 worth)
+        if (this.share < 0.1) {
+            console.log("⏭️  Skipping sell: dust amount (< 0.1 shares)");
+            this.holdingStatus = Market.None;
+            this.share = 0;
+            return true;
         }
 
         // Refresh balance from API before selling to get accurate balance
@@ -425,7 +441,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             share: this.share 
         });
         try {
-            GLOBAL_TX_PROCESS.current = TxProcess.Working;
+            this.txProcess.current = TxProcess.Working;
             
             const maxRetries = globalThis.__CONFIG__?.max_retries || 3;
             
@@ -470,7 +486,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             }
             return false;
         } finally {
-            GLOBAL_TX_PROCESS.current = TxProcess.Idle;
+            this.txProcess.current = TxProcess.Idle;
         }
     };
 }
