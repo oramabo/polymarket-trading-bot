@@ -37,7 +37,8 @@ export class Trade {
         upTokenId: string,
         downTokenId: string,
         authorizedClob: ClobClient,
-        label: string = ""
+        label: string = "",
+        minutes?: number
     ) {
         this.usd = usd;
         this.upTokenId = upTokenId;
@@ -57,7 +58,7 @@ export class Trade {
         this.prevDownTokenBalance = 0;
         this.hasBought = false;
         this.quitMarket = false;
-        this.marketTime = parseInt(globalThis.__CONFIG__.market.market_period) * 60;
+        this.marketTime = (minutes || parseInt(globalThis.__CONFIG__.market.market_period)) * 60;
         this.remainingTime = this.marketTime;
 
         this.authorizedClob = authorizedClob;
