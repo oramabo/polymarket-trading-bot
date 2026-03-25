@@ -4,18 +4,14 @@ import { POLYMARKET_PRIVATE_KEY, PROXY_WALLET_ADDRESS } from "../config/index.js
 export const HOST = "https://clob.polymarket.com";
 export const CHAIN_ID = 137;
 
+// Create the base wallet
+const wallet = new Wallet(POLYMARKET_PRIVATE_KEY);
+
 // Wrap ethers v6 Wallet so @polymarket/clob-client can use it
-export const SIGNER = Object.assign(new Wallet(POLYMARKET_PRIVATE_KEY), {
-  // clob-client expects _signTypedData (ethers v5-style); delegate to v6 signTypedData
-  _signTypedData(domain: any, types: any, value: any) {
-    return (this as any).signTypedData(domain, types, value);
-  },
-  // Some versions also look for a viem-style walletClient with account.address
-  walletClient: {
-    account: {
-      address: new Wallet(POLYMARKET_PRIVATE_KEY).address,
-    },
-  },
+// clob-client checks for _signTypedData (ethers v5-style)
+export const SIGNER = Object.assign(wallet, {
+  _signTypedData: (domain: any, types: any, value: any) =>
+    wallet.signTypedData(domain, types, value),
 });
 
 // For proxy wallets (Gnosis Safe), FUNDER must be the proxy contract address
