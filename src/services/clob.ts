@@ -18,7 +18,7 @@ export const SIGNER = Object.assign(wallet, {
 // SIGNER is the EOA that signs, FUNDER is the proxy wallet that holds funds
 export const FUNDER = PROXY_WALLET_ADDRESS;
 
-export const SIGNATURE_TYPE = 2; // 2 = Gnosis Safe / Proxy wallet (0 = EOA, 1 = EIP-1271, 2 = Gnosis Safe)
+export const SIGNATURE_TYPE = 1; // 1 = POLY_PROXY (Polymarket proxy wallet), 2 = POLY_GNOSIS_SAFE
 
 
 export const getPrices = async (upTokenId: string, downTokenId: string) => {
