@@ -268,6 +268,14 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return false;
         }
 
+        // Skip selling dust amounts (less than $0.10 worth)
+        if (this.share < 0.1) {
+            console.log("⏭️  Skipping sell: dust amount (< 0.1 shares)");
+            this.holdingStatus = Market.None;
+            this.share = 0;
+            return true;
+        }
+
         // Refresh balance from API before selling to get accurate balance
         await this.updateTokenBalances();
 
@@ -372,6 +380,14 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
         if (!this.downTokenId || !this.downSellPrice || this.downSellPrice <= 0 || isNaN(this.downSellPrice)) {
             console.error("Cannot sell down token: missing tokenId or invalid price");
             return false;
+        }
+
+        // Skip selling dust amounts (less than $0.10 worth)
+        if (this.share < 0.1) {
+            console.log("⏭️  Skipping sell: dust amount (< 0.1 shares)");
+            this.holdingStatus = Market.None;
+            this.share = 0;
+            return true;
         }
 
         // Refresh balance from API before selling to get accurate balance

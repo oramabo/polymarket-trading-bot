@@ -52,9 +52,12 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
                 const entry_time_ratio = globalThis.__CONFIG__.trade_2.entry_time_ratio;
                 const inEntryPriceRange = up_price_ratio >= entry_price_ratio_min && up_price_ratio <= entry_price_ratio_max;
 
+                // Don't try to sell in the last 30 seconds — no liquidity
+                const tooLateToSell = remaining_time_ratio > 0.9 && this.remainingTime < 30;
+
                 switch (this.holdingStatus) {
                     case Market.Up:
-                        if (inExitRange) {
+                        if (inExitRange && !tooLateToSell) {
                             const sellSuccess = await this.sellUpToken();
 
                             if (sellSuccess) {
@@ -74,7 +77,7 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
                         }
                         break;
                     case Market.Down:
-                        if (inExitRange) {
+                        if (inExitRange && !tooLateToSell) {
                             const sellSuccess = await this.sellDownToken();
 
                             // Only proceed with emergency buy if sell was successful
