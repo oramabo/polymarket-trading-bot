@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as TOML from "@iarna/toml";
 import { z } from "zod";
 
-const ConfigSchema = z.object({
+export const ConfigSchema = z.object({
   strategy: z.enum(["trade_1", "trade_2"]),
   trade_usd: z.number(),
   max_retries: z.number().default(3),

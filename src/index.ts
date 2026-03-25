@@ -6,15 +6,16 @@ import { getCurrentTime } from "./utils/index.js";
 import { loadConfig } from "./config/toml.js";
 import { Trade } from "./trade/index.js";
 import { notifySettlement } from "./services/telegram.js";
+import { startDashboard } from "./dashboard.js";
 
 loadConfig();
-
-const defaultMinutes = parseInt(globalThis.__CONFIG__.market.market_period) as Minutes;
+startDashboard();
 
 function getMinutesForCoin(coin: Coin): Minutes {
   const cfg = globalThis.__CONFIG__.market as any;
   const override = cfg[`${coin}_period`];
-  return override ? parseInt(override) as Minutes : defaultMinutes;
+  const defaultMins = parseInt(globalThis.__CONFIG__.market.market_period);
+  return override ? parseInt(override) as Minutes : defaultMins as Minutes;
 }
 
 async function runCoin(coin: Coin, client: ClobClient) {
