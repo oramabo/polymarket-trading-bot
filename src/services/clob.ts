@@ -1,5 +1,5 @@
 import { Wallet } from "ethers";
-import { POLYMARKET_PRIVATE_KEY, PROXY_WALLET_ADDRESS } from "../config";
+import { POLYMARKET_PRIVATE_KEY, PROXY_WALLET_ADDRESS } from "../config/index.js";
 
 export const HOST = "https://clob.polymarket.com";
 export const CHAIN_ID = 137;
