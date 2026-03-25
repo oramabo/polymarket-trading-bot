@@ -291,7 +291,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             token_id: this.upTokenId,
         });
 
-        // Convert balance from wei to human-readable (divide by 1e6) for validation
+        // Convert balance from micro-units to token count (divide by 1e6)
         const actualBalance = parseFloat(upBalance.balance) / 1e6;
 
         if (actualBalance <= 0 || isNaN(actualBalance) || !isFinite(actualBalance)) {
@@ -299,17 +299,8 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return false;
         }
 
-        // For SELL orders, use the raw balance (in wei) as the API expects it in this format
-        // The raw balance is the exact amount the API needs
-        const rawBalance = parseFloat(upBalance.balance);
-        
-        if (rawBalance <= 0 || isNaN(rawBalance) || !isFinite(rawBalance)) {
-            console.error("Cannot sell up token: invalid raw balance from API");
-            return false;
-        }
-
-        // Use raw balance for the amount parameter (API expects wei format)
-        const size = rawBalance;
+        // Use human-readable token count for the amount parameter
+        const size = actualBalance;
 
         // Ensure price is a valid number
         const price = Number(this.upSellPrice);
@@ -318,13 +309,11 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return false;
         }
 
-        console.log("selling up token", { 
-            tokenID: this.upTokenId, 
-            price: price, 
-            size, 
-            actualBalance, 
-            rawBalance: upBalance.balance,
-            share: this.share 
+        console.log("selling up token", {
+            tokenID: this.upTokenId,
+            price: price,
+            size,
+            share: this.share
         });
         try {
             this.txProcess.current = TxProcess.Working;
@@ -405,7 +394,7 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             token_id: this.downTokenId,
         });
 
-        // Convert balance from wei to human-readable (divide by 1e6) for validation
+        // Convert balance from micro-units to token count (divide by 1e6)
         const actualBalance = parseFloat(downBalance.balance) / 1e6;
 
         if (actualBalance <= 0 || isNaN(actualBalance) || !isFinite(actualBalance)) {
@@ -413,17 +402,8 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return false;
         }
 
-        // For SELL orders, use the raw balance (in wei) as the API expects it in this format
-        // The raw balance is the exact amount the API needs
-        const rawBalance = parseFloat(downBalance.balance);
-        
-        if (rawBalance <= 0 || isNaN(rawBalance) || !isFinite(rawBalance)) {
-            console.error("Cannot sell down token: invalid raw balance from API");
-            return false;
-        }
-
-        // Use raw balance for the amount parameter (API expects wei format)
-        const size = rawBalance;
+        // Use human-readable token count for the amount parameter
+        const size = actualBalance;
 
         // Ensure price is a valid number
         const price = Number(this.downSellPrice);
@@ -432,13 +412,11 @@ export function attachTradeMethods(TradeClass: new (...args: any[]) => any) {
             return false;
         }
 
-        console.log("selling down token", { 
-            tokenID: this.downTokenId, 
-            price: price, 
-            size, 
-            actualBalance, 
-            rawBalance: downBalance.balance,
-            share: this.share 
+        console.log("selling down token", {
+            tokenID: this.downTokenId,
+            price: price,
+            size,
+            share: this.share
         });
         try {
             this.txProcess.current = TxProcess.Working;
