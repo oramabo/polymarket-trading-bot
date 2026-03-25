@@ -31,6 +31,8 @@ export class Trade {
     authorizedClob: ClobClient;
     label: string;
     txProcess: { current: TxProcess };
+    buyEntryPrice: number;
+    marketSlug: string;
 
     constructor(
         usd: number,
@@ -60,6 +62,8 @@ export class Trade {
         this.quitMarket = false;
         this.marketTime = (minutes || parseInt(globalThis.__CONFIG__.market.market_period)) * 60;
         this.remainingTime = this.marketTime;
+        this.buyEntryPrice = 0;
+        this.marketSlug = "";
 
         this.authorizedClob = authorizedClob;
     }
