@@ -1,5 +1,5 @@
 strategy = "trade_2"
-trade_usd = 20
+trade_usd = 10
 max_retries = 3
 
 [market]
