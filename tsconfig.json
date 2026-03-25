@@ -3,8 +3,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     // Module settings
-    "module": "CommonJS", // <-- Use CommonJS to support require()
-    "moduleResolution": "node", // Node-style module resolution
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "target": "esnext",
     "lib": [
       "esnext",

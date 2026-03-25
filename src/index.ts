@@ -1,11 +1,11 @@
 import { ClobClient, Side } from "@polymarket/clob-client";
 import {Big} from "bignum-ts-v2";
-import { generateMarketSlug } from "./config";
-import type { Coin, MarketConfig, Minutes } from "./types";
-import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE, SIGNER } from "./services";
-import { getCurrentTime } from "./utils";
-import { loadConfig } from "./config/toml";
-import { Trade } from "./trade";
+import { generateMarketSlug } from "./config/index.js";
+import type { Coin, MarketConfig, Minutes } from "./types.js";
+import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE, SIGNER } from "./services/index.js";
+import { getCurrentTime } from "./utils/index.js";
+import { loadConfig } from "./config/toml.js";
+import { Trade } from "./trade/index.js";
 
 loadConfig();
 

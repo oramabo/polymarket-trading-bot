@@ -1,7 +1,7 @@
 {
   "name": "polymarket-trade-bot-ts",
   "version": "1.0.0",
-  "type": "commonjs",
+  "type": "module",
   "description": "Polymarket trading bot for cryptocurrency markets",
   "main": "index.js",
   "engines": {

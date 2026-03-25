@@ -1,9 +1,9 @@
 import { AssetType, OrderType, Side } from "@polymarket/clob-client";
-import { Market } from "../types";
-import { GLOBAL_TX_PROCESS, TxProcess } from "../constant";
-import { retryWithInstantRetry } from "../utils/retry";
+import { Market } from "../types.js";
+import { GLOBAL_TX_PROCESS, TxProcess } from "../constant/index.js";
+import { retryWithInstantRetry } from "../utils/retry.js";
 
-declare module "./index" {
+declare module "./index.js" {
     interface Trade {
         make_trading_decision(): void;
         buyUpToken(): Promise<void>;

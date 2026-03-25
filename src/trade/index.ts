@@ -1,5 +1,5 @@
 import { ClobClient, Side } from "@polymarket/clob-client";
-import { Market } from "../types";
+import { Market } from "../types.js";
 
 export class Trade {
     usd!: number;
@@ -59,9 +59,9 @@ export class Trade {
 }
 
 // Import modules that extend Trade prototype (after class definition)
-import { attachDecisionMethods } from "./decision";
-import { attachPricesMethods } from "./prices";
-import { attachTradeMethods } from "./trade";
+import { attachDecisionMethods } from "./decision.js";
+import { attachPricesMethods } from "./prices.js";
+import { attachTradeMethods } from "./trade.js";
 
 attachDecisionMethods(Trade);
 attachPricesMethods(Trade);

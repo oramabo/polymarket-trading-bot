@@ -1,7 +1,7 @@
-import { Market } from "../types";
-import { GLOBAL_TX_PROCESS, TxProcess } from "../constant";
+import { Market } from "../types.js";
+import { GLOBAL_TX_PROCESS, TxProcess } from "../constant/index.js";
 
-declare module "./index" {
+declare module "./index.js" {
     interface Trade {
         shareInUsd(): number;
         totalValue(): number;

@@ -1,2 +1,2 @@
-export * from "./clob";
-export * from "./gamma";
+export * from "./clob.js";
+export * from "./gamma.js";
