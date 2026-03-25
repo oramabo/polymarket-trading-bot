@@ -1,4 +1,5 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
+import { writeFileSync } from "node:fs";
 import { ConfigSchema } from "./config/toml.js";
 import { botState } from "./state.js";
 
@@ -12,6 +13,42 @@ function deepMerge(target: any, source: any): any {
     }
   }
   return result;
+}
+
+function configToToml(c: any): string {
+  const lines: string[] = [];
+  lines.push(`strategy = "${c.strategy}"`);
+  lines.push(`trade_usd = ${c.trade_usd}`);
+  lines.push(`max_retries = ${c.max_retries}`);
+  lines.push('');
+  lines.push('[market]');
+  lines.push(`market_coins = [${c.market.market_coins.map((x: string) => `"${x}"`).join(', ')}]`);
+  lines.push(`market_period = "${c.market.market_period}"`);
+  if (c.market.btc_period) lines.push(`btc_period = "${c.market.btc_period}"`);
+  lines.push('');
+  lines.push('[trade_1]');
+  lines.push(`entry_price_range = [${c.trade_1.entry_price_range.join(', ')}]`);
+  lines.push(`swap_price_range = [${c.trade_1.swap_price_range.join(', ')}]`);
+  lines.push(`take_profit = ${c.trade_1.take_profit}`);
+  lines.push(`stop_loss = ${c.trade_1.stop_loss}`);
+  lines.push(`exit_time_ratio = ${c.trade_1.exit_time_ratio}`);
+  lines.push(`exit_price_ratio = ${c.trade_1.exit_price_ratio}`);
+  lines.push('');
+  lines.push('[trade_2]');
+  lines.push(`entry_price_ratio = [${c.trade_2.entry_price_ratio.join(', ')}]`);
+  lines.push(`entry_time_ratio = ${c.trade_2.entry_time_ratio}`);
+  lines.push(`max_entry_time_ratio = ${c.trade_2.max_entry_time_ratio}`);
+  lines.push(`exit_price_ratio_range = [[${c.trade_2.exit_price_ratio_range[0].join(', ')}], [${c.trade_2.exit_price_ratio_range[1].join(', ')}]]`);
+  if (c.trade_2.emergency_swap_price) lines.push(`emergency_swap_price = [${c.trade_2.emergency_swap_price.join(', ')}]`);
+  lines.push(`trailing_stop_pct = ${c.trade_2.trailing_stop_pct}`);
+  lines.push(`stop_loss_pct = ${c.trade_2.stop_loss_pct}`);
+  lines.push(`take_profit_ratio = ${c.trade_2.take_profit_ratio}`);
+  lines.push(`min_signal_strength = ${c.trade_2.min_signal_strength}`);
+  lines.push(`position_scale = ${c.trade_2.position_scale}`);
+  lines.push(`allow_reentry = ${c.trade_2.allow_reentry}`);
+  lines.push(`max_reentries = ${c.trade_2.max_reentries}`);
+  lines.push('');
+  return lines.join('\n');
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -35,6 +72,15 @@ async function postConfig(req: IncomingMessage, res: ServerResponse) {
     const merged = deepMerge(globalThis.__CONFIG__, partial);
     const validated = ConfigSchema.parse(merged);
     globalThis.__CONFIG__ = validated;
+
+    // Persist to trade.toml so changes survive restarts
+    try {
+      const toml = configToToml(validated);
+      writeFileSync("trade.toml", toml, "utf-8");
+    } catch (e) {
+      console.error("Failed to save trade.toml:", e);
+    }
+
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, config: validated }));
   } catch (err: any) {
