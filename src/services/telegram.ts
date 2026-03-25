@@ -94,3 +94,33 @@ export async function notifyError(
     `Error: <code>${error.slice(0, 200)}</code>`;
   await sendTelegramMessage(msg);
 }
+
+export async function notifyStartup(info: {
+  port: string | number;
+  coins: string[];
+  signer: string;
+  dashboardUrl?: string;
+  error?: string;
+}): Promise<void> {
+  if (info.error) {
+    const msg =
+      `🔴 <b>BOT STARTUP FAILED</b>\n` +
+      `Error: <code>${info.error.slice(0, 300)}</code>\n` +
+      `Port: ${info.port}\n` +
+      `Dashboard may still be accessible.`;
+    await sendTelegramMessage(msg);
+    return;
+  }
+  const msg =
+    `🟢 <b>BOT STARTED</b>\n` +
+    `🌐 Port: <b>${info.port}</b>\n` +
+    `👛 Signer: <code>${info.signer}</code>\n` +
+    `🪙 Coins: <b>${info.coins.join(", ")}</b>\n` +
+    `📊 Dashboard ready`;
+  await sendTelegramMessage(msg);
+}
+
+export async function notifyLog(message: string): Promise<void> {
+  await sendTelegramMessage(`📋 <b>LOG</b>\n<code>${message.slice(0, 500)}</code>`);
+}
+

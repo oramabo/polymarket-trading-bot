@@ -5,7 +5,7 @@ import { CHAIN_ID, FUNDER, getEvent, getMarket, getPrices, HOST, SIGNATURE_TYPE,
 import { getCurrentTime } from "./utils/index.js";
 import { loadConfig } from "./config/toml.js";
 import { Trade } from "./trade/index.js";
-import { notifySettlement, notifyError } from "./services/telegram.js";
+import { notifySettlement, notifyError, notifyStartup, notifyLog } from "./services/telegram.js";
 import { startDashboard } from "./dashboard.js";
 import { botState, logTrade } from "./state.js";
 
@@ -83,6 +83,11 @@ async function runCoin(coin: Coin, client: ClobClient) {
 }
 
 async function main() {
+  const port = process.env.PORT || 3000;
+  const signerAddr = SIGNER?.address || "unknown";
+
+  await notifyLog(`Bot starting... Port: ${port}, Signer: ${signerAddr}`);
+
   console.log("SIGNER ", SIGNER);
   const clobClient = new ClobClient(HOST, CHAIN_ID, SIGNER);
   const apiKey = await clobClient.createOrDeriveApiKey();
@@ -102,12 +107,17 @@ async function main() {
   const coins = globalThis.__CONFIG__.market.market_coins as Coin[];
   console.log(`Starting trading for coins: ${coins.join(", ")}`);
 
+  await notifyStartup({ port, coins, signer: signerAddr });
+
   // Run all coins in parallel
   await Promise.all(coins.map(coin => runCoin(coin, client)));
 }
 
-main().catch(err => {
+main().catch(async err => {
+  const port = process.env.PORT || 3000;
+  const errMsg = err?.message || String(err);
   console.error("Fatal error in main():", err);
   console.log("Dashboard is still running. Fix the issue and restart.");
+  await notifyStartup({ port, coins: [], signer: "unknown", error: errMsg });
   // Keep process alive for dashboard access
 });
