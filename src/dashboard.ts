@@ -320,8 +320,8 @@ header h1{font-size:18px;color:#58a6ff}
 </div>
 
 <div class="card">
-<h2>Console Logs</h2>
-<p class="card-desc">Live console output from the bot. Errors highlighted in red.</p>
+<h2>Errors &amp; Warnings</h2>
+<p class="card-desc">Only shows errors and warnings. Scroll is preserved when reading.</p>
 <div id="logWrap" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;line-height:1.6">
 <div class="empty">Waiting for logs...</div>
 </div>
@@ -602,14 +602,16 @@ rStatus()}catch(e){}}
 
 async function rLogs(){
 try{const r=await fetch('/api/logs');const logs=await r.json();const w=$('logWrap');
-if(!logs.length){w.innerHTML='<div class="empty">Waiting for logs...</div>';return}
-const recent=logs.slice(-80);
+const errors=logs.filter(l=>l.level==='error'||l.level==='warn');
+if(!errors.length){w.innerHTML='<div class="empty">No errors yet</div>';return}
+const wasAtBottom=w.scrollHeight-w.scrollTop-w.clientHeight<30;
+const recent=errors.slice(-80);
 w.innerHTML=recent.map(l=>{
-const c=l.level==='error'?'#f85149':l.level==='warn'?'#d29922':'#8b949e';
+const c=l.level==='error'?'#f85149':'#d29922';
 const t=new Date(l.timestamp).toLocaleTimeString();
 return '<div style="color:'+c+';word-break:break-all"><span style="color:#484f58">'+t+'</span> '+l.message.replace(/</g,'&lt;')+'</div>'
 }).join('');
-w.scrollTop=w.scrollHeight;
+if(wasAtBottom)w.scrollTop=w.scrollHeight;
 }catch(e){}}
 
 loadConfig();rStatus();rStats();rPos();rTrades();rLogs();
