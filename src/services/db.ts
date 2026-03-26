@@ -123,19 +123,50 @@ export async function dbSaveConfig(config: any): Promise<void> {
   }
 }
 
-export async function dbGetTrades(limit: number = 100): Promise<any[]> {
+export async function dbGetTrades(opts: {
+  limit?: number;
+  offset?: number;
+  coin?: string;
+  dateFrom?: string;
+  dateTo?: string;
+} = {}): Promise<{ rows: any[]; total: number }> {
   const p = getPool();
-  if (!p) return [];
+  if (!p) return { rows: [], total: 0 };
 
   try {
-    const res = await p.query(
-      "SELECT * FROM trades ORDER BY created_at DESC LIMIT $1",
-      [limit]
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (opts.coin) {
+      conditions.push(`coin = $${idx++}`);
+      params.push(opts.coin.toUpperCase());
+    }
+    if (opts.dateFrom) {
+      conditions.push(`created_at >= $${idx++}`);
+      params.push(opts.dateFrom);
+    }
+    if (opts.dateTo) {
+      conditions.push(`created_at <= $${idx++}`);
+      params.push(opts.dateTo + " 23:59:59");
+    }
+
+    const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+
+    const countRes = await p.query(`SELECT COUNT(*) FROM trades ${where}`, params);
+    const total = parseInt(countRes.rows[0].count);
+
+    const limit = opts.limit || 20;
+    const offset = opts.offset || 0;
+    const dataRes = await p.query(
+      `SELECT * FROM trades ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, limit, offset]
     );
-    return res.rows;
+
+    return { rows: dataRes.rows, total };
   } catch (err) {
     console.error("DB get trades error:", err);
-    return [];
+    return { rows: [], total: 0 };
   }
 }
 

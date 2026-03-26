@@ -99,12 +99,11 @@ function getPositions(_req: IncomingMessage, res: ServerResponse) {
 }
 
 async function getTrades(_req: IncomingMessage, res: ServerResponse) {
-  // Return in-memory trades, or fall back to DB if empty
   let trades = botState.trades;
   if (trades.length === 0) {
     try {
-      const dbTrades = await dbGetTrades(50);
-      trades = dbTrades.map((t: any) => ({
+      const result = await dbGetTrades({ limit: 50 });
+      trades = result.rows.map((t: any) => ({
         coin: t.coin, side: t.side, action: t.action,
         price: parseFloat(t.price), amount: parseFloat(t.amount),
         shares: parseFloat(t.shares), pnl: parseFloat(t.pnl),
@@ -292,8 +291,20 @@ header h1{font-size:18px;color:#58a6ff}
 
 <div class="card">
 <h2>Trade History</h2>
-<p class="card-desc">Recent buy/sell activity with profit/loss tracking.</p>
+<p class="card-desc">Recent buy/sell activity with profit/loss tracking. Use filters to search DB history.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:end">
+<div class="field" style="flex:1;min-width:80px"><label>Coin</label><select id="hCoin" onchange="loadHistory()"><option value="">All</option><option value="BTC">BTC</option><option value="ETH">ETH</option><option value="SOL">SOL</option><option value="XRP">XRP</option></select></div>
+<div class="field" style="flex:1;min-width:110px"><label>From</label><input type="date" id="hFrom" onchange="loadHistory()"></div>
+<div class="field" style="flex:1;min-width:110px"><label>To</label><input type="date" id="hTo" onchange="loadHistory()"></div>
+</div>
 <div class="tbl-wrap" id="tWrap"><div class="empty">No trades yet</div></div>
+<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+<span style="font-size:11px;color:#484f58" id="hInfo">-</span>
+<div style="display:flex;gap:6px">
+<button onclick="hPage(-1)" style="padding:4px 10px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#c9d1d9;font-size:11px;cursor:pointer" id="hPrev" disabled>&lt; Prev</button>
+<button onclick="hPage(1)" style="padding:4px 10px;border-radius:4px;border:1px solid #30363d;background:#21262d;color:#c9d1d9;font-size:11px;cursor:pointer" id="hNext">Next &gt;</button>
+</div>
+</div>
 </div>
 
 <div class="card">
@@ -462,16 +473,36 @@ return '<div class="position-card">'+
 $('pUpd').textContent='Updated '+tAgo(Date.now());
 }catch(e){$('pGrid').innerHTML='<div class="empty">Connection error</div>'}}
 
-async function rTrades(){
-try{const r=await fetch('/api/trades');const ts=await r.json();const w=$('tWrap');
-if(!ts.length){w.innerHTML='<div class="empty">No trades yet</div>';return}
-const rc=ts.slice(-30).reverse();
-let h='<table class="tt"><thead><tr><th>Time</th><th>Coin</th><th>Action</th><th>Side</th><th>Price</th><th>PnL</th><th>Reason</th></tr></thead><tbody>';
-for(const t of rc){const ac=t.action==='BUY'?'a-buy':t.action==='SELL'?'a-sell':'a-settle';
+let hOffset=0;const hLimit=15;let hTotal=0;
+function renderTrades(trades,w){
+if(!trades.length){w.innerHTML='<div class="empty">No trades found</div>';return}
+let h='<table class="tt"><thead><tr><th>Date</th><th>Coin</th><th>Action</th><th>Side</th><th>Price</th><th>PnL</th><th>Reason</th></tr></thead><tbody>';
+for(const t of trades){const ac=t.action==='BUY'?'a-buy':t.action==='SELL'?'a-sell':'a-settle';
 const pc=t.pnl>=0?'pnl-pos':'pnl-neg';
-h+='<tr><td>'+tAgo(t.timestamp)+'</td><td style="font-weight:600;text-transform:uppercase">'+t.coin+'</td><td class="'+ac+'">'+t.action+'</td><td>'+t.side+'</td><td>$'+t.price.toFixed(3)+'</td><td class="'+pc+'">'+fP(t.pnl)+'</td><td style="color:#8b949e;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+( t.reason||'-')+'</td></tr>'}
-h+='</tbody></table>';w.innerHTML=h;
-}catch(e){$('tWrap').innerHTML='<div class="empty">Connection error</div>'}}
+const ts=t.created_at?new Date(t.created_at).toLocaleString():tAgo(t.timestamp);
+const price=typeof t.price==='string'?parseFloat(t.price):t.price;
+const pnl=typeof t.pnl==='string'?parseFloat(t.pnl):t.pnl;
+h+='<tr><td style="white-space:nowrap;font-size:10px">'+ts+'</td><td style="font-weight:600;text-transform:uppercase">'+t.coin+'</td><td class="'+ac+'">'+t.action+'</td><td>'+t.side+'</td><td>$'+price.toFixed(3)+'</td><td class="'+pc+'">'+fP(pnl)+'</td><td style="color:#8b949e;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(t.reason||'-')+'</td></tr>'}
+h+='</tbody></table>';w.innerHTML=h}
+
+async function loadHistory(){
+hOffset=0;await rTrades()}
+
+async function rTrades(){
+const w=$('tWrap');
+try{
+const coin=$('hCoin').value;const from=$('hFrom').value;const to=$('hTo').value;
+const params=new URLSearchParams({limit:String(hLimit),offset:String(hOffset)});
+if(coin)params.set('coin',coin);if(from)params.set('from',from);if(to)params.set('to',to);
+const r=await fetch('/api/trades/history?'+params);const data=await r.json();
+if(data.rows){hTotal=data.total;renderTrades(data.rows,w);
+const page=Math.floor(hOffset/hLimit)+1;const pages=Math.ceil(hTotal/hLimit)||1;
+$('hInfo').textContent='Showing '+(hOffset+1)+'-'+Math.min(hOffset+hLimit,hTotal)+' of '+hTotal+' (page '+page+'/'+pages+')';
+$('hPrev').disabled=hOffset<=0;$('hNext').disabled=hOffset+hLimit>=hTotal}
+else{const ts=Array.isArray(data)?data:[];renderTrades(ts,w);$('hInfo').textContent=ts.length+' trades (in-memory)'}
+}catch(e){w.innerHTML='<div class="empty">Connection error</div>'}}
+
+function hPage(dir){hOffset=Math.max(0,hOffset+dir*hLimit);rTrades()}
 
 function showStrat(s){
 $('t1c').style.display=s==='trade_1'?'block':'none';
@@ -574,10 +605,15 @@ export function startDashboard() {
     if (url.pathname === "/api/logs" && req.method === "GET") return getLogs(req, res);
     if (url.pathname === "/api/control" && req.method === "POST") return postControl(req, res);
     if (url.pathname === "/api/trades/history" && req.method === "GET") {
-      const limit = parseInt(url.searchParams.get("limit") || "100");
-      const rows = await dbGetTrades(limit);
+      const result = await dbGetTrades({
+        limit: parseInt(url.searchParams.get("limit") || "20"),
+        offset: parseInt(url.searchParams.get("offset") || "0"),
+        coin: url.searchParams.get("coin") || undefined,
+        dateFrom: url.searchParams.get("from") || undefined,
+        dateTo: url.searchParams.get("to") || undefined,
+      });
       res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(rows));
+      res.end(JSON.stringify(result));
       return;
     }
     if (url.pathname === "/" || url.pathname === "") return serveDashboard(req, res);
