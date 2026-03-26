@@ -29,7 +29,7 @@ export const ConfigSchema = z.object({
     trailing_stop_pct: z.number().default(1.0),
     stop_loss_pct: z.number().default(1.0),
     take_profit_ratio: z.number().default(1.0),
-    min_signal_strength: z.number().default(0.45),
+    min_signal_strength: z.number().default(0.50),
     position_scale: z.boolean().default(true),
     allow_reentry: z.boolean().default(false),
     max_reentries: z.number().default(2),

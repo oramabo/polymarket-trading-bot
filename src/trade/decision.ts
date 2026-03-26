@@ -48,6 +48,11 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
 
                 // ========= EXIT LOGIC (when holding a position) =========
                 if (this.holdingStatus === Market.Up || this.holdingStatus === Market.Down) {
+                    // Skip ALL exit logic if params are at 1.0 (disabled)
+                    if (cfg.trailing_stop_pct >= 1.0 && cfg.stop_loss_pct >= 1.0 && cfg.take_profit_ratio >= 1.0) {
+                        break; // hold to resolution, never sell
+                    }
+
                     const isHoldingUp = this.holdingStatus === Market.Up;
                     const currentFavorablePrice = isHoldingUp ? this.upBuyPrice : this.downBuyPrice;
 
