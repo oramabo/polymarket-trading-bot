@@ -99,6 +99,13 @@ export function attachDecisionMethods(TradeClass: new (...args: any[]) => any) {
                 const canEnter = !this.hasBought || (cfg.allow_reentry && this.tradeCount < cfg.max_reentries);
                 if (!canEnter) break;
 
+                // Minimum balance check — stop trading to protect profits
+                const minBal = globalThis.__CONFIG__.min_balance || 0;
+                if (minBal > 0 && this.usd > 0 && this.usd < minBal) {
+                    console.log(`[${this.label}] Balance $${this.usd.toFixed(2)} below minimum $${minBal}. Skipping trade to protect profits.`);
+                    break;
+                }
+
                 // Need enough price history for signals
                 if (this.priceHistory.length < 5) break;
 

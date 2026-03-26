@@ -5,6 +5,7 @@ import { z } from "zod";
 export const ConfigSchema = z.object({
   strategy: z.enum(["trade_1", "trade_2"]),
   trade_usd: z.number(),
+  min_balance: z.number().default(0),
   max_retries: z.number().default(3),
   market: z.object({
     market_coins: z.array(z.enum(["btc", "eth", "sol", "xrp"])),

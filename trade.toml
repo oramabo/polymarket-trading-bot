@@ -1,5 +1,6 @@
 strategy = "trade_2"
 trade_usd = 5
+min_balance = 0
 max_retries = 3
 
 [market]
