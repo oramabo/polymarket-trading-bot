@@ -477,25 +477,31 @@ try{const r=await fetch('/api/positions');const ps=await r.json();const g=$('pGr
 if(!ps.length){g.innerHTML='<div class="empty">No position data yet. The bot needs to connect and start a market cycle (up to 5-15 min).</div>';return}
 g.innerHTML=ps.map(p=>{
 const sc=p.side==='UP'?'side-up':p.side==='DOWN'?'side-down':'side-none';
-const pc=p.unrealizedPnl>=0?'pnl-pos':'pnl-neg';
-const st=Math.max(0,Math.min(100,Math.round((p.signalStrength||0)*100)));
+const uPnl=Number(p.unrealizedPnl)||0;
+const pc=uPnl>=0?'pnl-pos':'pnl-neg';
+const st=Math.max(0,Math.min(100,Math.round((Number(p.signalStrength)||0)*100)));
 const label=p.side==='NONE'?'Watching':'Holding '+p.side;
-const pnlPct=p.entryPrice>0?((p.currentPrice-p.entryPrice)/p.entryPrice*100):0;
-const timeLeft=p.remainingTime>0?Math.floor(p.remainingTime/60)+'m '+p.remainingTime%60+'s':'--';
+const curPrice=Number(p.currentPrice)||0;
+const entPrice=Number(p.entryPrice)||0;
+const shares=Number(p.shares)||0;
+const bal=Number(p.usdBalance)||0;
+const remTime=Number(p.remainingTime)||0;
+const pnlPct=entPrice>0?((curPrice-entPrice)/entPrice*100):0;
+const timeLeft=remTime>0?Math.floor(remTime/60)+'m '+(remTime%60)+'s':'--';
 return '<div class="position-card">'+
 '<div class="cn">'+p.coin+'</div>'+
 '<span class="side-badge '+sc+'">'+label+'</span>'+
-'<div class="dt">Balance <span style="color:#58a6ff;font-weight:600">$'+(p.usdBalance||0).toFixed(2)+'</span></div>'+
-'<div class="dt">Price <span>$'+p.currentPrice.toFixed(3)+'</span></div>'+
-(p.entryPrice>0?'<div class="dt">Entry <span>$'+p.entryPrice.toFixed(3)+'</span></div>':'')+
-(p.shares>0?'<div class="dt">Shares <span>'+p.shares.toFixed(2)+'</span></div>':'')+
-(p.side!=='NONE'?'<div class="dt">PnL <span class="'+pc+'">'+fP(p.unrealizedPnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)</span></div>':'')+
+'<div class="dt">Balance <span style="color:#58a6ff;font-weight:600">$'+bal.toFixed(2)+'</span></div>'+
+'<div class="dt">Price <span>$'+curPrice.toFixed(3)+'</span></div>'+
+(entPrice>0?'<div class="dt">Entry <span>$'+entPrice.toFixed(3)+'</span></div>':'')+
+(shares>0?'<div class="dt">Shares <span>'+shares.toFixed(2)+'</span></div>':'')+
+(p.side!=='NONE'&&entPrice>0?'<div class="dt">PnL <span class="'+pc+'">'+fP(uPnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)</span></div>':'')+
 '<div class="dt">Time Left <span>'+timeLeft+'</span></div>'+
 '<div class="dt">Signal <span>'+st+'%</span></div>'+
 '<div class="sig-bar"><div class="fill" style="width:'+st+'%"></div></div>'+
 '</div>'}).join('');
 $('pUpd').textContent='Updated '+tAgo(Date.now());
-}catch(e){$('pGrid').innerHTML='<div class="empty">Connection error</div>'}}
+}catch(e){$('pGrid').innerHTML='<div class="empty">Error: '+(e.message||e)+'</div>'}}
 
 let hOffset=0;const hLimit=15;let hTotal=0;
 function renderTrades(trades,w){
