@@ -122,6 +122,10 @@ function getStats(_req: IncomingMessage, res: ServerResponse) {
 }
 
 function getStatus(_req: IncomingMessage, res: ServerResponse) {
+  let totalBalance = 0;
+  for (const pos of botState.positions.values()) {
+    totalBalance = Math.max(totalBalance, pos.usdBalance);
+  }
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({
     status: botState.botStatus,
@@ -129,6 +133,7 @@ function getStatus(_req: IncomingMessage, res: ServerResponse) {
     uptime: Math.floor((Date.now() - botState.startedAt) / 1000),
     coins: Array.from(botState.positions.keys()),
     lastUpdates: Object.fromEntries(botState.lastPriceUpdate),
+    totalBalance,
   }));
 }
 
@@ -253,7 +258,7 @@ header h1{font-size:18px;color:#58a6ff}
 .updated{font-size:10px;color:#484f58;text-align:right;margin-top:6px}
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 @media(max-width:768px){
-  .stats-row{grid-template-columns:1fr 1fr}
+  .stats-row{grid-template-columns:1fr 1fr 1fr!important}
   .row,.row3{grid-template-columns:1fr}
   .positions-grid{grid-template-columns:1fr}
   .stat .sv{font-size:18px}
@@ -278,7 +283,8 @@ header h1{font-size:18px;color:#58a6ff}
 </div>
 <div class="container">
 
-<div class="stats-row">
+<div class="stats-row" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr">
+<div class="stat" style="border-color:#58a6ff50"><div class="sv" id="sBal" style="color:#58a6ff">--</div><div class="sl">Balance</div></div>
 <div class="stat"><div class="sv" id="sPnl">$0.00</div><div class="sl">Total P&L</div></div>
 <div class="stat"><div class="sv" id="sWR">0%</div><div class="sl">Win Rate</div></div>
 <div class="stat"><div class="sv" id="sTT">0</div><div class="sl">Trades</div></div>
@@ -474,13 +480,18 @@ const sc=p.side==='UP'?'side-up':p.side==='DOWN'?'side-down':'side-none';
 const pc=p.unrealizedPnl>=0?'pnl-pos':'pnl-neg';
 const st=Math.max(0,Math.min(100,Math.round((p.signalStrength||0)*100)));
 const label=p.side==='NONE'?'Watching':'Holding '+p.side;
+const pnlPct=p.entryPrice>0?((p.currentPrice-p.entryPrice)/p.entryPrice*100):0;
+const timeLeft=p.remainingTime>0?Math.floor(p.remainingTime/60)+'m '+p.remainingTime%60+'s':'--';
 return '<div class="position-card">'+
 '<div class="cn">'+p.coin+'</div>'+
 '<span class="side-badge '+sc+'">'+label+'</span>'+
-(p.entryPrice>0?'<div class="dt">Entry <span>$'+p.entryPrice.toFixed(3)+'</span></div>':'')+
+'<div class="dt">Balance <span style="color:#58a6ff;font-weight:600">$'+(p.usdBalance||0).toFixed(2)+'</span></div>'+
 '<div class="dt">Price <span>$'+p.currentPrice.toFixed(3)+'</span></div>'+
+(p.entryPrice>0?'<div class="dt">Entry <span>$'+p.entryPrice.toFixed(3)+'</span></div>':'')+
 (p.shares>0?'<div class="dt">Shares <span>'+p.shares.toFixed(2)+'</span></div>':'')+
-(p.side!=='NONE'?'<div class="dt">uPnL <span class="'+pc+'">'+fP(p.unrealizedPnl)+'</span></div>':'')+
+(p.side!=='NONE'?'<div class="dt">PnL <span class="'+pc+'">'+fP(p.unrealizedPnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)</span></div>':'')+
+'<div class="dt">Time Left <span>'+timeLeft+'</span></div>'+
+'<div class="dt">Signal <span>'+st+'%</span></div>'+
 '<div class="sig-bar"><div class="fill" style="width:'+st+'%"></div></div>'+
 '</div>'}).join('');
 $('pUpd').textContent='Updated '+tAgo(Date.now());
@@ -489,13 +500,16 @@ $('pUpd').textContent='Updated '+tAgo(Date.now());
 let hOffset=0;const hLimit=15;let hTotal=0;
 function renderTrades(trades,w){
 if(!trades.length){w.innerHTML='<div class="empty">No trades found</div>';return}
-let h='<table class="tt"><thead><tr><th>Date</th><th>Coin</th><th>Action</th><th>Side</th><th>Price</th><th>PnL</th><th>Reason</th></tr></thead><tbody>';
+let h='<table class="tt"><thead><tr><th>Date</th><th>Coin</th><th>Action</th><th>Side</th><th>Price</th><th>Amount</th><th>PnL</th><th>Reason</th></tr></thead><tbody>';
 for(const t of trades){const ac=t.action==='BUY'?'a-buy':t.action==='SELL'?'a-sell':'a-settle';
 const pc=t.pnl>=0?'pnl-pos':'pnl-neg';
 const ts=t.created_at?new Date(t.created_at).toLocaleString():tAgo(t.timestamp);
 const price=typeof t.price==='string'?parseFloat(t.price):t.price;
 const pnl=typeof t.pnl==='string'?parseFloat(t.pnl):t.pnl;
-h+='<tr><td style="white-space:nowrap;font-size:10px">'+ts+'</td><td style="font-weight:600;text-transform:uppercase">'+t.coin+'</td><td class="'+ac+'">'+t.action+'</td><td>'+t.side+'</td><td>$'+price.toFixed(3)+'</td><td class="'+pc+'">'+fP(pnl)+'</td><td style="color:#8b949e;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(t.reason||'-')+'</td></tr>'}
+const amt=typeof t.amount==='string'?parseFloat(t.amount):t.amount||0;
+const pnlPct=amt>0&&pnl!==0?((pnl/amt)*100):0;
+const pnlStr=t.action==='BUY'?'-':fP(pnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)';
+h+='<tr><td style="white-space:nowrap;font-size:10px">'+ts+'</td><td style="font-weight:600;text-transform:uppercase">'+t.coin+'</td><td class="'+ac+'">'+t.action+'</td><td>'+t.side+'</td><td>$'+price.toFixed(3)+'</td><td>$'+amt.toFixed(2)+'</td><td class="'+pc+'">'+pnlStr+'</td><td style="color:#8b949e;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(t.reason||'-')+'</td></tr>'}
 h+='</tbody></table>';w.innerHTML=h}
 
 async function loadHistory(){
@@ -574,6 +588,7 @@ isPaused=s.paused;
 btn.textContent=s.paused?'Resume Bot':'Pause Bot';
 btn.style.background=s.paused?'#238636':'#21262d';
 btn.style.borderColor=s.paused?'#238636':'#30363d';
+if(s.totalBalance>0)$('sBal').textContent='$'+s.totalBalance.toFixed(2);
 if(s.paused){bar.className='conn-bar';bar.style.background='#d2992220';bar.style.color='#d29922';bar.textContent='Bot PAUSED | Uptime: '+Math.floor(s.uptime/60)+'m'}
 else if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
 else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Connecting to Polymarket...'}

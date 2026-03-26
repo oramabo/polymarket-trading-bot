@@ -131,6 +131,8 @@ export function attachPricesMethods(TradeClass: new (...args: any[]) => any) {
             shares: this.share,
             unrealizedPnl,
             signalStrength: signal,
+            usdBalance: this.usd,
+            remainingTime: remaining_time,
             timestamp: Date.now(),
         });
 
