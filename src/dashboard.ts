@@ -525,9 +525,9 @@ const ly=toY(last);ctx.beginPath();ctx.arc(toX(prices.length-1),ly,3,0,Math.PI*2
 function hp(text){$('hText').textContent=text;$('hPop').classList.add('show');$('hOverlay').classList.add('show')}
 function closeHelp(){$('hPop').classList.remove('show');$('hOverlay').classList.remove('show')}
 const RISK_PROFILES={
-low:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.55,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Strict entry signals, holds to market resolution. Best for binary markets.'},
-med:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.45,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate entry criteria, holds to resolution. Good default.'},
-high:{trailing_stop_pct:0.40,stop_loss_pct:0.50,take_profit_ratio:0.90,min_signal_strength:0.3,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, has active exit logic. More trades but more risk.'}
+low:{trailing_stop_pct:1.0,stop_loss_pct:1.0,take_profit_ratio:1.0,min_signal_strength:0.55,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Strict entries, NEVER sells. Holds all positions to market resolution for full payout.'},
+med:{trailing_stop_pct:1.0,stop_loss_pct:1.0,take_profit_ratio:1.0,min_signal_strength:0.45,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate entries, NEVER sells. Holds to resolution. Best for binary markets.'},
+high:{trailing_stop_pct:0.40,stop_loss_pct:0.50,take_profit_ratio:0.90,min_signal_strength:0.3,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, HAS active exits. Sells positions before resolution. More risk.'}
 };
 function setRisk(level){
 const p=RISK_PROFILES[level];if(!p)return;
