@@ -1,6 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { writeFileSync } from "node:fs";
 import { ConfigSchema } from "./config/toml.js";
+import { dbSaveConfig, dbGetTrades } from "./services/db.js";
 import { botState } from "./state.js";
 
 function deepMerge(target: any, source: any): any {
@@ -81,6 +82,9 @@ async function postConfig(req: IncomingMessage, res: ServerResponse) {
       console.error("Failed to save trade.toml:", e);
     }
 
+    // Save config snapshot to PostgreSQL
+    dbSaveConfig(validated).catch(() => {});
+
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, config: validated }));
   } catch (err: any) {
@@ -102,6 +106,16 @@ function getTrades(_req: IncomingMessage, res: ServerResponse) {
 function getStats(_req: IncomingMessage, res: ServerResponse) {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(botState.stats));
+}
+
+function getStatus(_req: IncomingMessage, res: ServerResponse) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({
+    status: botState.botStatus,
+    uptime: Math.floor((Date.now() - botState.startedAt) / 1000),
+    coins: Array.from(botState.positions.keys()),
+    lastUpdates: Object.fromEntries(botState.lastPriceUpdate),
+  }));
 }
 
 function serveDashboard(_req: IncomingMessage, res: ServerResponse) {
@@ -203,6 +217,12 @@ header h1{font-size:18px;color:#58a6ff}
   .positions-grid{grid-template-columns:1fr}
   .stat .sv{font-size:18px}
   header h1{font-size:16px}
+.conn-bar{padding:8px 16px;font-size:12px;text-align:center;font-weight:600;transition:.3s}
+.conn-ok{background:#23863620;color:#3fb950}
+.conn-err{background:#f8514920;color:#f85149}
+.conn-wait{background:#d2992220;color:#d29922}
+.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 }
 </style>
 </head>
@@ -211,6 +231,7 @@ header h1{font-size:18px;color:#58a6ff}
 <h1>Polymarket Bot</h1>
 <span class="status" id="sBadge">--</span>
 </header>
+<div class="conn-bar conn-wait pulse" id="connBar">Connecting to bot...</div>
 <div class="container">
 
 <div class="stats-row">
@@ -349,9 +370,9 @@ const $=id=>document.getElementById(id);
 function hp(text){$('hText').textContent=text;$('hPop').classList.add('show');$('hOverlay').classList.add('show')}
 function closeHelp(){$('hPop').classList.remove('show');$('hOverlay').classList.remove('show')}
 const RISK_PROFILES={
-low:{trailing_stop_pct:0.25,stop_loss_pct:0.40,take_profit_ratio:0.92,min_signal_strength:0.45,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Holds positions longer, strict entry criteria, wider stops. Fewer trades, aims for bigger wins.'},
-med:{trailing_stop_pct:0.18,stop_loss_pct:0.30,take_profit_ratio:0.85,min_signal_strength:0.3,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate risk. Good mix of trade frequency and profit targets.'},
-high:{trailing_stop_pct:0.10,stop_loss_pct:0.20,take_profit_ratio:0.70,min_signal_strength:0.2,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, tight stops, takes profit quickly. More trades, re-entry enabled.'}
+low:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.55,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Strict entry signals, holds to market resolution. Best for binary markets.'},
+med:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.45,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate entry criteria, holds to resolution. Good default.'},
+high:{trailing_stop_pct:0.40,stop_loss_pct:0.50,take_profit_ratio:0.90,min_signal_strength:0.3,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, has active exit logic. More trades but more risk.'}
 };
 function setRisk(level){
 const p=RISK_PROFILES[level];if(!p)return;
@@ -376,7 +397,7 @@ $('sTT').textContent=s.totalTrades;$('sWL').textContent=s.wins+'/'+s.losses;
 
 async function rPos(){
 try{const r=await fetch('/api/positions');const ps=await r.json();const g=$('pGrid');
-if(!ps.length){g.innerHTML='<div class="empty">Waiting for market data...</div>';return}
+if(!ps.length){g.innerHTML='<div class="empty">No position data yet. The bot needs to connect and start a market cycle (up to 5-15 min).</div>';return}
 g.innerHTML=ps.map(p=>{
 const sc=p.side==='UP'?'side-up':p.side==='DOWN'?'side-down':'side-none';
 const pc=p.unrealizedPnl>=0?'pnl-pos':'pnl-neg';
@@ -455,8 +476,16 @@ else{$('msg').className='msg err';$('msg').textContent='Error: '+d.error}
 }catch(e){$('msg').className='msg err';$('msg').textContent='Save failed: '+e.message}
 b.disabled=false;b.textContent='Save Settings';setTimeout(()=>{$('msg').textContent=''},5000)}
 
-loadConfig();rStats();rPos();rTrades();
-setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(loadConfig,10000);
+async function rStatus(){
+try{const r=await fetch('/api/status');const s=await r.json();const bar=$('connBar');
+if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
+else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot connecting to Polymarket...'}
+else if(s.status==='starting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot starting...'}
+else{bar.className='conn-bar conn-err';bar.textContent='Bot error: '+s.status}
+}catch(e){$('connBar').className='conn-bar conn-err';$('connBar').textContent='Dashboard cannot reach bot API'}}
+
+loadConfig();rStatus();rStats();rPos();rTrades();
+setInterval(rStatus,3000);setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(loadConfig,10000);
 </script>
 </body>
 </html>`;
@@ -472,6 +501,14 @@ export function startDashboard() {
     if (url.pathname === "/api/positions" && req.method === "GET") return getPositions(req, res);
     if (url.pathname === "/api/trades" && req.method === "GET") return getTrades(req, res);
     if (url.pathname === "/api/stats" && req.method === "GET") return getStats(req, res);
+    if (url.pathname === "/api/status" && req.method === "GET") return getStatus(req, res);
+    if (url.pathname === "/api/trades/history" && req.method === "GET") {
+      const limit = parseInt(url.searchParams.get("limit") || "100");
+      const rows = await dbGetTrades(limit);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(rows));
+      return;
+    }
     if (url.pathname === "/" || url.pathname === "") return serveDashboard(req, res);
 
     res.writeHead(404);

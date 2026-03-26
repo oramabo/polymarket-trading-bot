@@ -1,3 +1,5 @@
+import { dbSaveTrade, dbUpdateStats } from "./services/db.js";
+
 export interface PositionInfo {
   coin: string;
   side: "UP" | "DOWN" | "NONE";
@@ -28,6 +30,8 @@ export const botState = {
   trades: [] as TradeRecord[],
   stats: { totalPnl: 0, wins: 0, losses: 0, totalTrades: 0 },
   lastPriceUpdate: new Map<string, number>(),
+  botStatus: "starting" as string,
+  startedAt: Date.now(),
 };
 
 export function logTrade(record: TradeRecord) {
@@ -43,6 +47,19 @@ export function logTrade(record: TradeRecord) {
   } else if (record.action === "BUY") {
     botState.stats.totalTrades++;
   }
+
+  // Persist to PostgreSQL (fire and forget)
+  dbSaveTrade({
+    coin: record.coin,
+    side: record.side,
+    action: record.action,
+    price: record.price,
+    amount: record.amount,
+    shares: record.shares,
+    pnl: record.pnl,
+    reason: record.reason,
+  }).catch(() => {});
+  dbUpdateStats(botState.stats).catch(() => {});
 }
 
 export function updatePosition(coin: string, info: Partial<PositionInfo>) {

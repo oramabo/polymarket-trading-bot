@@ -8,9 +8,23 @@ import { Trade } from "./trade/index.js";
 import { notifySettlement, notifyError, notifyStartup, notifyLog } from "./services/telegram.js";
 import { startDashboard } from "./dashboard.js";
 import { botState, logTrade } from "./state.js";
+import { initDb, dbLoadLastConfig, dbGetStats } from "./services/db.js";
 
 loadConfig();
 startDashboard();
+
+// Initialize DB and load persisted state
+initDb().then(async () => {
+  // Load stats from DB
+  const dbStats = await dbGetStats();
+  if (dbStats) {
+    botState.stats.totalPnl = parseFloat(dbStats.total_pnl) || 0;
+    botState.stats.wins = dbStats.wins || 0;
+    botState.stats.losses = dbStats.losses || 0;
+    botState.stats.totalTrades = dbStats.total_trades || 0;
+    console.log("Loaded stats from DB:", botState.stats);
+  }
+}).catch(e => console.error("DB init failed:", e));
 
 function getMinutesForCoin(coin: Coin): Minutes {
   const cfg = globalThis.__CONFIG__.market as any;
@@ -86,11 +100,13 @@ async function main() {
   const port = process.env.PORT || 3000;
   const signerAddr = SIGNER?.address || "unknown";
 
+  botState.botStatus = "connecting";
   await notifyLog(`Bot starting... Port: ${port}, Signer: ${signerAddr}`);
 
   console.log("SIGNER ", SIGNER);
   const clobClient = new ClobClient(HOST, CHAIN_ID, SIGNER);
   const apiKey = await clobClient.createOrDeriveApiKey();
+  botState.botStatus = "running";
   console.log("apiKey", apiKey);
 
   const client = new ClobClient(
@@ -116,6 +132,7 @@ async function main() {
 main().catch(async err => {
   const port = process.env.PORT || 3000;
   const errMsg = err?.message || String(err);
+  botState.botStatus = "error: " + errMsg.slice(0, 100);
   console.error("Fatal error in main():", err);
   console.log("Dashboard is still running. Fix the issue and restart.");
   await notifyStartup({ port, coins: [], signer: "unknown", error: errMsg });
