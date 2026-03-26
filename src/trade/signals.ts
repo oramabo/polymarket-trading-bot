@@ -69,25 +69,31 @@ export function getSignalStrength(prices: number[], timeRatio: number): number {
 }
 
 /**
- * Direction: SMA crossover to determine trend direction.
- * Uses SMA(5) vs SMA(15) when enough data, falls back to simpler logic.
+ * Direction: determines which side to bet on.
+ * Uses price position relative to 0.5 AND momentum confirmation.
+ * Only returns a direction when both agree.
  */
 export function getDirection(prices: number[]): "UP" | "DOWN" | "NONE" {
-  if (prices.length < 3) return "NONE";
+  if (prices.length < 5) return "NONE";
 
   const current = prices[prices.length - 1];
+  const prev = prices[prices.length - 3]; // 3 ticks ago
 
-  if (prices.length >= 15) {
+  // Price must be clearly away from 0.5
+  if (current > 0.55 && current > prev) return "UP";   // price above 0.55 AND rising
+  if (current < 0.45 && current < prev) return "DOWN";  // price below 0.45 AND falling
+
+  // With more history, use SMA confirmation
+  if (prices.length >= 10) {
     const fast = sma(prices, 5);
-    const slow = sma(prices, 15);
-    if (fast > slow + 0.01) return current > 0.5 ? "UP" : "DOWN";
-    if (fast < slow - 0.01) return current < 0.5 ? "DOWN" : "UP";
+    const slow = sma(prices, 10);
+
+    // Both SMAs and current price must agree on direction
+    if (current > 0.52 && fast > slow && current >= fast) return "UP";
+    if (current < 0.48 && fast < slow && current <= fast) return "DOWN";
   }
 
-  // Fallback: simple direction from 0.5
-  if (current > 0.55) return "UP";
-  if (current < 0.45) return "DOWN";
-  return "NONE";
+  return "NONE"; // no clear direction — don't trade
 }
 
 /**
