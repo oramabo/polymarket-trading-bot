@@ -5,8 +5,8 @@ max_retries = 3
 
 [market]
 market_coins = ["btc", "eth", "sol", "xrp"]
-market_period = "15" # default period: 15 / 60 / 240 / 1440
-btc_period = "5"     # BTC supports 5m markets
+market_period = "15"
+btc_period = "5"
 
 [trade_1]
 entry_price_range = [0.4, 0.6]
@@ -17,11 +17,11 @@ exit_time_ratio = 0.95
 exit_price_ratio = 0.98
 
 [trade_2]
-entry_price_ratio = [0.2, 0.95]
-entry_time_ratio = 0.4
+entry_price_ratio = [0.4, 0.95]
+entry_time_ratio = 0.6
 max_entry_time_ratio = 0.85
-exit_price_ratio_range = [[1.0, 1.0], [1.0, 1.0]]
-emergency_swap_price = [1.0, 1.0]
+exit_price_ratio_range = [[0.0, 0.01], [1.0, 1.0]]
+emergency_swap_price = [0.0, 0.5]
 trailing_stop_pct = 1.0
 stop_loss_pct = 1.0
 take_profit_ratio = 1.0
