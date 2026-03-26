@@ -243,6 +243,11 @@ header h1{font-size:18px;color:#58a6ff}
 .risk-med{border-color:#d29922;color:#d29922;background:#d2992210}
 .risk-high{border-color:#f85149;color:#f85149;background:#f8514910}
 .risk-desc{font-size:11px;color:#484f58;margin-bottom:10px}
+.hint{font-size:10px;color:#6e7681;margin-top:3px;line-height:1.4}
+.section-label{font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px;margin-bottom:10px;display:inline-block}
+.sl-buy{background:#23863620;color:#3fb950}
+.sl-sell{background:#d2992220;color:#d29922}
+.sl-risk{background:#f8514920;color:#f85149}
 .empty{text-align:center;padding:20px;color:#484f58;font-size:13px}
 .updated{font-size:10px;color:#484f58;text-align:right;margin-top:6px}
 .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
@@ -332,11 +337,13 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="row3">
 <div class="field">
 <label>Strategy <span class="help" onclick="hp('trade_1: Simple exit by time/price ratio. trade_2: Advanced signal-based with trailing stop, stop-loss, take-profit, and position sizing.')">?</span></label>
-<select id="strategy"><option value="trade_1">trade_1</option><option value="trade_2">trade_2</option></select>
+<select id="strategy"><option value="trade_1">trade_1 (Simple)</option><option value="trade_2">trade_2 (Smart)</option></select>
+<div class="hint">trade_1 = basic time/price exits. trade_2 = smart signals with risk management (recommended).</div>
 </div>
 <div class="field">
-<label>Budget (USD) <span class="help" onclick="hp('Amount in USD per trade. May be scaled down by signal strength if Position Scale is on.')">?</span></label>
+<label>Budget per Trade ($)</label>
 <input type="number" id="trade_usd" step="0.5" min="0.5">
+<div class="hint">How much money to bet on each trade. The bot may use less if the signal is weak (when Position Scale is on).</div>
 </div>
 <div class="field">
 <label>Max Retries <span class="help" onclick="hp('Times to retry a failed order before giving up.')">?</span></label>
@@ -389,34 +396,34 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="card" id="t2c">
 <h2>Trade 2 Settings</h2>
 <p class="card-desc">Advanced signal-based strategy with momentum scoring, trailing stops, and risk management.</p>
-<div class="tuple-group"><label >Entry Price Ratio <span class="help" onclick="hp('Only buy when price deviates this much from 50/50. [0.2, 0.95] means enter when price shows direction.')">?</span></label><div class="tuple"><input type="number" id="t2em" step="0.01"><input type="number" id="t2ex" step="0.01"></div></div>
+<span class="section-label sl-buy">When to Buy</span>
+<div class="tuple-group"><label>Price Movement Range [min, max]</label><div class="tuple"><input type="number" id="t2em" step="0.01"><input type="number" id="t2ex" step="0.01"></div><div class="hint">How much must the price move from 50/50 before buying. Left = minimum move (0.2 = small move enough). Right = maximum (0.95 = almost decided). Wider range = more trades.</div></div>
 <div class="row">
-<div class="field"><label >Entry Time <span class="help" onclick="hp('Wait this fraction of market time before buying. 0.3 = wait 30%.')">?</span></label><input type="number" id="t2et" step="0.01"></div>
-<div class="field"><label >Max Entry Time <span class="help" onclick="hp('Stop entering after this point. 0.9 = no buys after 90% elapsed.')">?</span></label><input type="number" id="t2met" step="0.01"></div>
+<div class="field"><label>Wait Before Buying</label><input type="number" id="t2et" step="0.01"><div class="hint">Wait this % of the market before buying. 0.4 means wait 2 min in a 5-min market. Gives time to see the trend.</div></div>
+<div class="field"><label>Stop Buying After</label><input type="number" id="t2met" step="0.01"><div class="hint">Don't buy after this point. 0.85 = stop buying in the last 15%. Too late to make profit.</div></div>
 </div>
+<div class="field" style="margin-bottom:12px"><label>Minimum Confidence</label><input type="number" id="t2ms" step="0.01"><div class="hint">The bot scores each opportunity 0-1. Only buys when score is above this. Higher = fewer trades but better quality. Try 0.3 for more trades, 0.5+ for safer picks.</div></div>
 <div class="tuple-group"><label >Exit Range 1 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable. Use trailing stop instead.')">?</span></label><div class="tuple"><input type="number" id="t2e1m" step="0.01"><input type="number" id="t2e1x" step="0.01"></div></div>
 <div class="tuple-group"><label >Exit Range 2 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2e2m" step="0.01"><input type="number" id="t2e2x" step="0.01"></div></div>
 <div class="tuple-group"><label >Emergency Swap <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2esm" step="0.01"><input type="number" id="t2esx" step="0.01"></div></div>
-<div class="row">
-<div class="field"><label >Trailing Stop % <span class="help" onclick="hp('Sell if price drops this % from its peak while you are in profit. Higher = hold longer. 0.25 = sell after 25% drop.')">?</span></label><input type="number" id="t2ts" step="0.01"></div>
-<div class="field"><label >Stop Loss % <span class="help" onclick="hp('Cut losses if unrealized loss exceeds this %. Higher = more risk tolerance. 0.40 = cut at 40% loss.')">?</span></label><input type="number" id="t2slp" step="0.01"></div>
-</div>
-<div class="row">
-<div class="field"><label >Take Profit <span class="help" onclick="hp('Sell when price is this decisive. Higher = hold longer for bigger wins. 0.90 = sell when 90% decided.')">?</span></label><input type="number" id="t2tpr" step="0.01"></div>
-<div class="field"><label >Min Signal <span class="help" onclick="hp('Minimum signal score (0-1) to enter a trade. Higher = fewer but better trades.')">?</span></label><input type="number" id="t2ms" step="0.01"></div>
-</div>
+<span class="section-label sl-sell">When to Sell</span>
+<div class="field" style="margin-bottom:10px"><label>Trailing Stop</label><input type="number" id="t2ts" step="0.01"><div class="hint">If your position is winning and then drops this much from its best price, sell to protect profit. Example: 0.15 = sell if it drops 15% from peak. Set to 0.99 to never sell early (let the market decide).</div></div>
+<div class="field" style="margin-bottom:10px"><label>Stop Loss</label><input type="number" id="t2slp" step="0.01"><div class="hint">Maximum loss you'll accept before cutting the position. Example: 0.30 = sell if losing 30%. Set to 0.99 to hold through any loss and let the market resolve.</div></div>
+<div class="field" style="margin-bottom:10px"><label>Take Profit</label><input type="number" id="t2tpr" step="0.01"><div class="hint">Sell when the market is this decided. 0.98 = only sell when almost certain (basically hold to end). 0.70 = sell earlier when 70% decided. Lower = take smaller but safer profits.</div></div>
 <div class="row">
 <div class="field"><label >Max Reentries <span class="help" onclick="hp('Max buy/sell cycles per market when re-entry is enabled.')">?</span></label><input type="number" id="t2mr" step="1" min="0"></div>
 <div class="field"></div>
 </div>
 <div class="tf">
 <label class="toggle"><input type="checkbox" id="t2ps"><span class="sl"></span></label>
-<span class="tl" >Position Scale <span class="help" onclick="hp('Scale trade amount by signal confidence. Strong signal = full budget, weak = smaller bet.')">?</span></span>
+<span class="tl">Position Scale</span>
 </div>
+<div class="hint" style="margin:-6px 0 10px 44px">When ON, the bot bets more on strong signals and less on weak ones. When OFF, always bets the full budget.</div>
 <div class="tf">
 <label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label>
-<span class="tl" >Allow Re-entry <span class="help" onclick="hp('Buy again after selling in the same market window.')">?</span></span>
+<span class="tl">Allow Re-entry</span>
 </div>
+<div class="hint" style="margin:-6px 0 10px 44px">When ON, the bot can buy again after selling in the same market window. When OFF, only one trade per market.</div>
 </div>
 
 <button class="btn" id="saveBtn" onclick="save()">Save Settings</button>
