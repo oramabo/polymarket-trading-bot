@@ -7,7 +7,7 @@ import { loadConfig } from "./config/toml.js";
 import { Trade } from "./trade/index.js";
 import { notifySettlement, notifyError, notifyStartup, notifyLog } from "./services/telegram.js";
 import { startDashboard } from "./dashboard.js";
-import { botState, logTrade } from "./state.js";
+import { botState, logTrade, updatePosition } from "./state.js";
 import { initDb, dbLoadLastConfig, dbGetStats } from "./services/db.js";
 
 loadConfig();
@@ -58,28 +58,38 @@ async function runCoin(coin: Coin, client: ClobClient) {
     const trade = new Trade(usd, upTokenId, downTokenId, client, label, minutes);
     trade.marketSlug = slug;
 
+    // Initialize position in shared state immediately so dashboard shows it
+    updatePosition(label, {
+      coin: label,
+      side: "NONE",
+      entryPrice: 0,
+      currentPrice: 0,
+      shares: 0,
+      unrealizedPnl: 0,
+      signalStrength: 0,
+      timestamp: Date.now(),
+    });
+
     let stalePriceAlerted = false;
 
     while (true) {
-      getPrices(upTokenId, downTokenId)
-        .then(async e => {
-          stalePriceAlerted = false;
-          trade.updatePrices(endTimestamp - getCurrentTime(), e[upTokenId].BUY, e[upTokenId].SELL, e[downTokenId].BUY, e[downTokenId].SELL);
-          await trade.make_trading_decision();
-        })
-        .catch(e => {
-          console.error(`[${label}]`, e);
-          // Stale price detection
-          const lastUpdate = botState.lastPriceUpdate.get(label) || Date.now();
-          const staleSecs = Math.round((Date.now() - lastUpdate) / 1000);
-          if (staleSecs > 5) {
-            console.warn(`[${label}] Stale prices (${staleSecs}s since last update)`);
-            if (staleSecs > 30 && !stalePriceAlerted) {
-              stalePriceAlerted = true;
-              notifyError(label, "price_feed", `Prices stale for ${staleSecs}s, skipping trades`);
-            }
+      try {
+        const e = await getPrices(upTokenId, downTokenId);
+        stalePriceAlerted = false;
+        trade.updatePrices(endTimestamp - getCurrentTime(), e[upTokenId].BUY, e[upTokenId].SELL, e[downTokenId].BUY, e[downTokenId].SELL);
+        await trade.make_trading_decision();
+      } catch (e) {
+        console.error(`[${label}]`, e);
+        const lastUpdate = botState.lastPriceUpdate.get(label) || Date.now();
+        const staleSecs = Math.round((Date.now() - lastUpdate) / 1000);
+        if (staleSecs > 5) {
+          console.warn(`[${label}] Stale prices (${staleSecs}s since last update)`);
+          if (staleSecs > 30 && !stalePriceAlerted) {
+            stalePriceAlerted = true;
+            notifyError(label, "price_feed", `Prices stale for ${staleSecs}s, skipping trades`);
           }
-        });
+        }
+      }
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
