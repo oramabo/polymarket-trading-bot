@@ -67,6 +67,8 @@ async function runCoin(coin: Coin, client: ClobClient) {
       shares: 0,
       unrealizedPnl: 0,
       signalStrength: 0,
+      usdBalance: 0,
+      remainingTime: 0,
       timestamp: Date.now(),
     });
 

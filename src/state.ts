@@ -8,6 +8,8 @@ export interface PositionInfo {
   shares: number;
   unrealizedPnl: number;
   signalStrength: number;
+  usdBalance: number;
+  remainingTime: number;
   timestamp: number;
 }
 
@@ -83,7 +85,7 @@ export function logTrade(record: TradeRecord) {
 export function updatePosition(coin: string, info: Partial<PositionInfo>) {
   const existing = botState.positions.get(coin) || {
     coin, side: "NONE" as const, entryPrice: 0, currentPrice: 0,
-    shares: 0, unrealizedPnl: 0, signalStrength: 0, timestamp: Date.now(),
+    shares: 0, unrealizedPnl: 0, signalStrength: 0, usdBalance: 0, remainingTime: 0, timestamp: Date.now(),
   };
   botState.positions.set(coin, { ...existing, ...info });
 }
