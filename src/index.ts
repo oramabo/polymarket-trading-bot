@@ -8,9 +8,23 @@ import { Trade } from "./trade/index.js";
 import { notifySettlement, notifyError, notifyStartup, notifyLog } from "./services/telegram.js";
 import { startDashboard } from "./dashboard.js";
 import { botState, logTrade } from "./state.js";
+import { initDb, dbLoadLastConfig, dbGetStats } from "./services/db.js";
 
 loadConfig();
 startDashboard();
+
+// Initialize DB and load persisted state
+initDb().then(async () => {
+  // Load stats from DB
+  const dbStats = await dbGetStats();
+  if (dbStats) {
+    botState.stats.totalPnl = parseFloat(dbStats.total_pnl) || 0;
+    botState.stats.wins = dbStats.wins || 0;
+    botState.stats.losses = dbStats.losses || 0;
+    botState.stats.totalTrades = dbStats.total_trades || 0;
+    console.log("Loaded stats from DB:", botState.stats);
+  }
+}).catch(e => console.error("DB init failed:", e));
 
 function getMinutesForCoin(coin: Coin): Minutes {
   const cfg = globalThis.__CONFIG__.market as any;

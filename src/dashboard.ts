@@ -1,6 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
 import { writeFileSync } from "node:fs";
 import { ConfigSchema } from "./config/toml.js";
+import { dbSaveConfig, dbGetTrades } from "./services/db.js";
 import { botState } from "./state.js";
 
 function deepMerge(target: any, source: any): any {
@@ -80,6 +81,9 @@ async function postConfig(req: IncomingMessage, res: ServerResponse) {
     } catch (e) {
       console.error("Failed to save trade.toml:", e);
     }
+
+    // Save config snapshot to PostgreSQL
+    dbSaveConfig(validated).catch(() => {});
 
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ ok: true, config: validated }));
@@ -349,9 +353,9 @@ const $=id=>document.getElementById(id);
 function hp(text){$('hText').textContent=text;$('hPop').classList.add('show');$('hOverlay').classList.add('show')}
 function closeHelp(){$('hPop').classList.remove('show');$('hOverlay').classList.remove('show')}
 const RISK_PROFILES={
-low:{trailing_stop_pct:0.25,stop_loss_pct:0.40,take_profit_ratio:0.92,min_signal_strength:0.45,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Holds positions longer, strict entry criteria, wider stops. Fewer trades, aims for bigger wins.'},
-med:{trailing_stop_pct:0.18,stop_loss_pct:0.30,take_profit_ratio:0.85,min_signal_strength:0.3,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate risk. Good mix of trade frequency and profit targets.'},
-high:{trailing_stop_pct:0.10,stop_loss_pct:0.20,take_profit_ratio:0.70,min_signal_strength:0.2,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, tight stops, takes profit quickly. More trades, re-entry enabled.'}
+low:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.55,entry_time_ratio:0.5,max_entry_time_ratio:0.80,position_scale:true,allow_reentry:false,max_reentries:1,desc:'Conservative: Strict entry signals, holds to market resolution. Best for binary markets.'},
+med:{trailing_stop_pct:0.99,stop_loss_pct:0.99,take_profit_ratio:0.98,min_signal_strength:0.45,entry_time_ratio:0.4,max_entry_time_ratio:0.85,position_scale:true,allow_reentry:false,max_reentries:2,desc:'Balanced: Moderate entry criteria, holds to resolution. Good default.'},
+high:{trailing_stop_pct:0.40,stop_loss_pct:0.50,take_profit_ratio:0.90,min_signal_strength:0.3,entry_time_ratio:0.3,max_entry_time_ratio:0.90,position_scale:true,allow_reentry:true,max_reentries:3,desc:'Aggressive: Enters early, has active exit logic. More trades but more risk.'}
 };
 function setRisk(level){
 const p=RISK_PROFILES[level];if(!p)return;
@@ -472,6 +476,13 @@ export function startDashboard() {
     if (url.pathname === "/api/positions" && req.method === "GET") return getPositions(req, res);
     if (url.pathname === "/api/trades" && req.method === "GET") return getTrades(req, res);
     if (url.pathname === "/api/stats" && req.method === "GET") return getStats(req, res);
+    if (url.pathname === "/api/trades/history" && req.method === "GET") {
+      const limit = parseInt(url.searchParams.get("limit") || "100");
+      const rows = await dbGetTrades(limit);
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(rows));
+      return;
+    }
     if (url.pathname === "/" || url.pathname === "") return serveDashboard(req, res);
 
     res.writeHead(404);
