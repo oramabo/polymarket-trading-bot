@@ -262,12 +262,14 @@ header h1{font-size:18px;color:#58a6ff}
 .slider-row{display:flex;align-items:center;gap:8px}
 .slider-row .edge{font-size:10px;color:var(--dimmer);white-space:nowrap}
 .slider-val{font-size:15px;font-weight:700;min-width:50px;text-align:right;font-family:monospace}
-input[type=range]{-webkit-appearance:none;height:6px;border-radius:3px;background:var(--border);outline:none;width:100%}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;cursor:pointer}
-.buy-slider::-webkit-slider-thumb{background:var(--green)}
-.sell-slider::-webkit-slider-thumb{background:var(--orange)}
-.buy-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--green);border:none;cursor:pointer}
-.sell-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--orange);border:none;cursor:pointer}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--border);outline:none;width:100%;margin:8px 0;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;cursor:pointer;margin-top:-8px}
+input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px}
+input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--border)}
+.buy-slider::-webkit-slider-thumb{background:var(--green);box-shadow:0 0 4px #3fb95060}
+.sell-slider::-webkit-slider-thumb{background:var(--orange);box-shadow:0 0 4px #d2992260}
+.buy-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--green);border:none;cursor:pointer}
+.sell-slider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--orange);border:none;cursor:pointer}
 .range-vis{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .range-bar{flex:1;height:8px;background:var(--border);border-radius:4px;position:relative;overflow:hidden}
 .range-fill{position:absolute;height:100%;border-radius:4px;background:var(--green);transition:.2s}
