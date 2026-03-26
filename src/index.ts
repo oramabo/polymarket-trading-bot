@@ -73,6 +73,13 @@ async function runCoin(coin: Coin, client: ClobClient) {
     let stalePriceAlerted = false;
 
     while (true) {
+      // Skip trading when paused (still poll prices for live view)
+      if (botState.paused) {
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (endTimestamp - getCurrentTime() <= 0) break;
+        continue;
+      }
+
       try {
         const e = await getPrices(upTokenId, downTokenId);
         stalePriceAlerted = false;

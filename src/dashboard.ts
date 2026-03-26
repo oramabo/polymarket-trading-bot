@@ -112,10 +112,33 @@ function getStatus(_req: IncomingMessage, res: ServerResponse) {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({
     status: botState.botStatus,
+    paused: botState.paused,
     uptime: Math.floor((Date.now() - botState.startedAt) / 1000),
     coins: Array.from(botState.positions.keys()),
     lastUpdates: Object.fromEntries(botState.lastPriceUpdate),
   }));
+}
+
+function getLogs(_req: IncomingMessage, res: ServerResponse) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(botState.logs));
+}
+
+async function postControl(req: IncomingMessage, res: ServerResponse) {
+  const body = await readBody(req);
+  const { action } = JSON.parse(body);
+  if (action === "pause") {
+    botState.paused = true;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, paused: true }));
+  } else if (action === "resume") {
+    botState.paused = false;
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: true, paused: false }));
+  } else {
+    res.writeHead(400, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ ok: false, error: "unknown action" }));
+  }
 }
 
 function serveDashboard(_req: IncomingMessage, res: ServerResponse) {
@@ -231,7 +254,10 @@ header h1{font-size:18px;color:#58a6ff}
 <h1>Polymarket Bot</h1>
 <span class="status" id="sBadge">--</span>
 </header>
-<div class="conn-bar conn-wait pulse" id="connBar">Connecting to bot...</div>
+<div style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:#161b22;border-bottom:1px solid #30363d">
+<div class="conn-bar conn-wait pulse" id="connBar" style="flex:1;border-radius:6px;margin:0">Connecting...</div>
+<button id="ctrlBtn" onclick="toggleBot()" style="padding:6px 16px;border-radius:6px;border:1px solid #30363d;background:#21262d;color:#c9d1d9;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Pause Bot</button>
+</div>
 <div class="container">
 
 <div class="stats-row">
@@ -255,6 +281,14 @@ header h1{font-size:18px;color:#58a6ff}
 <h2>Trade History</h2>
 <p class="card-desc">Recent buy/sell activity with profit/loss tracking.</p>
 <div class="tbl-wrap" id="tWrap"><div class="empty">No trades yet</div></div>
+</div>
+
+<div class="card">
+<h2>Console Logs</h2>
+<p class="card-desc">Live console output from the bot. Errors highlighted in red.</p>
+<div id="logWrap" style="max-height:300px;overflow-y:auto;background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;line-height:1.6">
+<div class="empty">Waiting for logs...</div>
+</div>
 </div>
 
 <div class="card">
@@ -476,16 +510,38 @@ else{$('msg').className='msg err';$('msg').textContent='Error: '+d.error}
 }catch(e){$('msg').className='msg err';$('msg').textContent='Save failed: '+e.message}
 b.disabled=false;b.textContent='Save Settings';setTimeout(()=>{$('msg').textContent=''},5000)}
 
+let isPaused=false;
 async function rStatus(){
-try{const r=await fetch('/api/status');const s=await r.json();const bar=$('connBar');
-if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
-else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot connecting to Polymarket...'}
+try{const r=await fetch('/api/status');const s=await r.json();const bar=$('connBar');const btn=$('ctrlBtn');
+isPaused=s.paused;
+btn.textContent=s.paused?'Resume Bot':'Pause Bot';
+btn.style.background=s.paused?'#238636':'#21262d';
+btn.style.borderColor=s.paused?'#238636':'#30363d';
+if(s.paused){bar.className='conn-bar';bar.style.background='#d2992220';bar.style.color='#d29922';bar.textContent='Bot PAUSED | Uptime: '+Math.floor(s.uptime/60)+'m'}
+else if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
+else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Connecting to Polymarket...'}
 else if(s.status==='starting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot starting...'}
-else{bar.className='conn-bar conn-err';bar.textContent='Bot error: '+s.status}
-}catch(e){$('connBar').className='conn-bar conn-err';$('connBar').textContent='Dashboard cannot reach bot API'}}
+else{bar.className='conn-bar conn-err';bar.textContent='Error: '+s.status}
+}catch(e){$('connBar').className='conn-bar conn-err';$('connBar').textContent='Cannot reach bot API'}}
 
-loadConfig();rStatus();rStats();rPos();rTrades();
-setInterval(rStatus,3000);setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(loadConfig,10000);
+async function toggleBot(){
+try{await fetch('/api/control',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:isPaused?'resume':'pause'})});
+rStatus()}catch(e){}}
+
+async function rLogs(){
+try{const r=await fetch('/api/logs');const logs=await r.json();const w=$('logWrap');
+if(!logs.length){w.innerHTML='<div class="empty">Waiting for logs...</div>';return}
+const recent=logs.slice(-80);
+w.innerHTML=recent.map(l=>{
+const c=l.level==='error'?'#f85149':l.level==='warn'?'#d29922':'#8b949e';
+const t=new Date(l.timestamp).toLocaleTimeString();
+return '<div style="color:'+c+';word-break:break-all"><span style="color:#484f58">'+t+'</span> '+l.message.replace(/</g,'&lt;')+'</div>'
+}).join('');
+w.scrollTop=w.scrollHeight;
+}catch(e){}}
+
+loadConfig();rStatus();rStats();rPos();rTrades();rLogs();
+setInterval(rStatus,3000);setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(rLogs,2000);setInterval(loadConfig,10000);
 </script>
 </body>
 </html>`;
@@ -502,6 +558,8 @@ export function startDashboard() {
     if (url.pathname === "/api/trades" && req.method === "GET") return getTrades(req, res);
     if (url.pathname === "/api/stats" && req.method === "GET") return getStats(req, res);
     if (url.pathname === "/api/status" && req.method === "GET") return getStatus(req, res);
+    if (url.pathname === "/api/logs" && req.method === "GET") return getLogs(req, res);
+    if (url.pathname === "/api/control" && req.method === "POST") return postControl(req, res);
     if (url.pathname === "/api/trades/history" && req.method === "GET") {
       const limit = parseInt(url.searchParams.get("limit") || "100");
       const rows = await dbGetTrades(limit);

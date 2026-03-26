@@ -23,7 +23,14 @@ export interface TradeRecord {
   timestamp: number;
 }
 
+export interface LogEntry {
+  level: "info" | "warn" | "error";
+  message: string;
+  timestamp: number;
+}
+
 const MAX_TRADE_HISTORY = 200;
+const MAX_LOGS = 150;
 
 export const botState = {
   positions: new Map<string, PositionInfo>(),
@@ -32,7 +39,24 @@ export const botState = {
   lastPriceUpdate: new Map<string, number>(),
   botStatus: "starting" as string,
   startedAt: Date.now(),
+  paused: false,
+  logs: [] as LogEntry[],
 };
+
+// Intercept console to capture logs for dashboard
+const origLog = console.log;
+const origWarn = console.warn;
+const origError = console.error;
+
+function captureLog(level: "info" | "warn" | "error", args: any[]) {
+  const message = args.map(a => typeof a === "string" ? a : JSON.stringify(a)).join(" ").slice(0, 300);
+  botState.logs.push({ level, message, timestamp: Date.now() });
+  if (botState.logs.length > MAX_LOGS) botState.logs.shift();
+}
+
+console.log = (...args: any[]) => { captureLog("info", args); origLog.apply(console, args); };
+console.warn = (...args: any[]) => { captureLog("warn", args); origWarn.apply(console, args); };
+console.error = (...args: any[]) => { captureLog("error", args); origError.apply(console, args); };
 
 export function logTrade(record: TradeRecord) {
   botState.trades.push(record);
@@ -48,16 +72,10 @@ export function logTrade(record: TradeRecord) {
     botState.stats.totalTrades++;
   }
 
-  // Persist to PostgreSQL (fire and forget)
   dbSaveTrade({
-    coin: record.coin,
-    side: record.side,
-    action: record.action,
-    price: record.price,
-    amount: record.amount,
-    shares: record.shares,
-    pnl: record.pnl,
-    reason: record.reason,
+    coin: record.coin, side: record.side, action: record.action,
+    price: record.price, amount: record.amount, shares: record.shares,
+    pnl: record.pnl, reason: record.reason,
   }).catch(() => {});
   dbUpdateStats(botState.stats).catch(() => {});
 }
