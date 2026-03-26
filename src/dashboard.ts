@@ -253,6 +253,24 @@ header h1{font-size:18px;color:#58a6ff}
 .section-label{font-size:12px;font-weight:600;padding:6px 10px;border-radius:4px;margin-bottom:10px;display:inline-block}
 .sl-buy{background:#23863620;color:#3fb950}
 .sl-sell{background:#d2992220;color:#d29922}
+.sub-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px}
+.sub-card.buy-card{border-left:3px solid var(--green)}
+.sub-card.sell-card{border-left:3px solid var(--orange)}
+.sub-card.adv-card{border-left:3px solid var(--dim)}
+.slider-group{margin-bottom:14px}
+.slider-group>label{font-size:12px;color:var(--dim);margin-bottom:6px;display:block}
+.slider-row{display:flex;align-items:center;gap:8px}
+.slider-row .edge{font-size:10px;color:var(--dimmer);white-space:nowrap}
+.slider-val{font-size:15px;font-weight:700;min-width:50px;text-align:right;font-family:monospace}
+input[type=range]{-webkit-appearance:none;height:6px;border-radius:3px;background:var(--border);outline:none;width:100%}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;cursor:pointer}
+.buy-slider::-webkit-slider-thumb{background:var(--green)}
+.sell-slider::-webkit-slider-thumb{background:var(--orange)}
+.buy-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--green);border:none;cursor:pointer}
+.sell-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--orange);border:none;cursor:pointer}
+.range-vis{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.range-bar{flex:1;height:8px;background:var(--border);border-radius:4px;position:relative;overflow:hidden}
+.range-fill{position:absolute;height:100%;border-radius:4px;background:var(--green);transition:.2s}
 .sl-risk{background:#f8514920;color:#f85149}
 .empty{text-align:center;padding:20px;color:#484f58;font-size:13px}
 .updated{font-size:10px;color:#484f58;text-align:right;margin-top:6px}
@@ -406,36 +424,65 @@ header h1{font-size:18px;color:#58a6ff}
 </div>
 
 <div class="card" id="t2c">
-<h2>Trade 2 Settings</h2>
-<p class="card-desc">Advanced signal-based strategy with momentum scoring, trailing stops, and risk management.</p>
+<h2>Trading Strategy</h2>
+<p class="card-desc">Configure when the bot buys, sells, and how much risk to take.</p>
+
+<div class="sub-card buy-card">
 <span class="section-label sl-buy">When to Buy</span>
-<div class="tuple-group"><label>Price Movement Range [min, max]</label><div class="tuple"><input type="number" id="t2em" step="0.01"><input type="number" id="t2ex" step="0.01"></div><div class="hint">How much must the price move from 50/50 before buying. Left = minimum move (0.2 = small move enough). Right = maximum (0.95 = almost decided). Wider range = more trades.</div></div>
-<div class="row">
-<div class="field"><label>Wait Before Buying</label><input type="number" id="t2et" step="0.01"><div class="hint">Wait this % of the market before buying. 0.4 means wait 2 min in a 5-min market. Gives time to see the trend.</div></div>
-<div class="field"><label>Stop Buying After</label><input type="number" id="t2met" step="0.01"><div class="hint">Don't buy after this point. 0.85 = stop buying in the last 15%. Too late to make profit.</div></div>
+<div class="slider-group">
+<label>Price Movement Range</label>
+<div class="range-vis"><span class="slider-val" style="color:var(--green)" id="t2emV">0.20</span><div class="range-bar"><div class="range-fill" id="t2rangeFill"></div></div><span class="slider-val" style="color:var(--green)" id="t2exV">0.95</span></div>
+<div style="display:flex;gap:6px"><input type="range" id="t2em" min="0" max="0.9" step="0.05" class="buy-slider" oninput="syncRange()"><input type="range" id="t2ex" min="0.1" max="1" step="0.05" class="buy-slider" oninput="syncRange()"></div>
+<div class="hint">How much must the price move from 50/50 before buying. Left = minimum move, Right = maximum. Wider range = more trades.</div>
 </div>
-<div class="field" style="margin-bottom:12px"><label>Minimum Confidence</label><input type="number" id="t2ms" step="0.01"><div class="hint">The bot scores each opportunity 0-1. Only buys when score is above this. Higher = fewer trades but better quality. Try 0.3 for more trades, 0.5+ for safer picks.</div></div>
-<div class="tuple-group"><label >Exit Range 1 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable. Use trailing stop instead.')">?</span></label><div class="tuple"><input type="number" id="t2e1m" step="0.01"><input type="number" id="t2e1x" step="0.01"></div></div>
-<div class="tuple-group"><label >Exit Range 2 <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2e2m" step="0.01"><input type="number" id="t2e2x" step="0.01"></div></div>
-<div class="tuple-group"><label >Emergency Swap <span class="help" onclick="hp('Legacy. Set to [1.0, 1.0] to disable.')">?</span></label><div class="tuple"><input type="number" id="t2esm" step="0.01"><input type="number" id="t2esx" step="0.01"></div></div>
+<div class="slider-group">
+<label>Buy Window</label>
+<div style="display:flex;gap:12px">
+<div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="edge">Start buying at</span><span class="slider-val" style="color:var(--green);font-size:13px" id="t2etV">40%</span></div><input type="range" id="t2et" min="0.1" max="0.8" step="0.05" class="buy-slider" oninput="$('t2etV').textContent=Math.round(this.value*100)+'%'"></div>
+<div style="flex:1"><div style="display:flex;justify-content:space-between"><span class="edge">Stop buying at</span><span class="slider-val" style="color:var(--green);font-size:13px" id="t2metV">85%</span></div><input type="range" id="t2met" min="0.5" max="0.95" step="0.05" class="buy-slider" oninput="$('t2metV').textContent=Math.round(this.value*100)+'%'"></div>
+</div>
+<div class="hint">Only buy between these time points in the market window. Start = wait for trend. End = too late, skip.</div>
+</div>
+<div class="slider-group">
+<label>Minimum Confidence</label>
+<div class="slider-row"><span class="edge">More trades</span><input type="range" id="t2ms" min="0.1" max="0.8" step="0.05" class="buy-slider" oninput="$('t2msV').textContent=this.value"><span class="edge">Safer picks</span><span class="slider-val" style="color:var(--green)" id="t2msV">0.45</span></div>
+<div class="hint">The bot scores each opportunity 0 to 1. Only buys when the score is above this. Higher = fewer but better trades.</div>
+</div>
+</div>
+
+<div class="sub-card sell-card">
 <span class="section-label sl-sell">When to Sell</span>
-<div class="field" style="margin-bottom:10px"><label>Trailing Stop</label><input type="number" id="t2ts" step="0.01"><div class="hint">If your position is winning and then drops this much from its best price, sell to protect profit. Example: 0.15 = sell if it drops 15% from peak. Set to 0.99 to never sell early (let the market decide).</div></div>
-<div class="field" style="margin-bottom:10px"><label>Stop Loss</label><input type="number" id="t2slp" step="0.01"><div class="hint">Maximum loss you'll accept before cutting the position. Example: 0.30 = sell if losing 30%. Set to 0.99 to hold through any loss and let the market resolve.</div></div>
-<div class="field" style="margin-bottom:10px"><label>Take Profit</label><input type="number" id="t2tpr" step="0.01"><div class="hint">Sell when the market is this decided. 0.98 = only sell when almost certain (basically hold to end). 0.70 = sell earlier when 70% decided. Lower = take smaller but safer profits.</div></div>
-<div class="row">
-<div class="field"><label >Max Reentries <span class="help" onclick="hp('Max buy/sell cycles per market when re-entry is enabled.')">?</span></label><input type="number" id="t2mr" step="1" min="0"></div>
-<div class="field"></div>
+<div class="slider-group">
+<label>Trailing Stop</label>
+<div class="slider-row"><span class="edge">Tight</span><input type="range" id="t2ts" min="0.05" max="0.99" step="0.01" class="sell-slider" oninput="$('t2tsV').textContent=this.value>=0.95?'OFF':Math.round(this.value*100)+'%'"><span class="edge">Off</span><span class="slider-val" style="color:var(--orange)" id="t2tsV">OFF</span></div>
+<div class="hint">Sell if a winning position drops this much from its peak price. OFF = hold to market end (recommended for binary markets).</div>
 </div>
-<div class="tf">
-<label class="toggle"><input type="checkbox" id="t2ps"><span class="sl"></span></label>
-<span class="tl">Position Scale</span>
+<div class="slider-group">
+<label>Stop Loss</label>
+<div class="slider-row"><span class="edge">Tight</span><input type="range" id="t2slp" min="0.05" max="0.99" step="0.01" class="sell-slider" oninput="$('t2slpV').textContent=this.value>=0.95?'OFF':Math.round(this.value*100)+'%'"><span class="edge">Off</span><span class="slider-val" style="color:var(--orange)" id="t2slpV">OFF</span></div>
+<div class="hint">Cut your losses if losing this much. OFF = hold through any loss, let the market resolve naturally.</div>
 </div>
-<div class="hint" style="margin:-6px 0 10px 44px">When ON, the bot bets more on strong signals and less on weak ones. When OFF, always bets the full budget.</div>
-<div class="tf">
-<label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label>
-<span class="tl">Allow Re-entry</span>
+<div class="slider-group">
+<label>Take Profit</label>
+<div class="slider-row"><span class="edge">Early</span><input type="range" id="t2tpr" min="0.5" max="0.99" step="0.01" class="sell-slider" oninput="$('t2tprV').textContent=this.value>=0.95?'Hold':'@'+Math.round(this.value*100)+'%'"><span class="edge">Hold</span><span class="slider-val" style="color:var(--orange)" id="t2tprV">Hold</span></div>
+<div class="hint">Take profit when the market is this decided. Hold = wait for full resolution. Lower = cash out earlier with smaller gains.</div>
 </div>
-<div class="hint" style="margin:-6px 0 10px 44px">When ON, the bot can buy again after selling in the same market window. When OFF, only one trade per market.</div>
+</div>
+
+<details style="margin-top:4px">
+<summary style="cursor:pointer;color:var(--dim);font-size:12px;padding:8px 0;user-select:none">Advanced Settings</summary>
+<div class="sub-card adv-card">
+<div class="tf"><label class="toggle"><input type="checkbox" id="t2ps"><span class="sl"></span></label><div><span style="font-size:12px;color:var(--text)">Position Scale</span><div class="hint">Bet more on strong signals, less on weak ones.</div></div></div>
+<div class="tf"><label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label><div><span style="font-size:12px;color:var(--text)">Allow Re-entry</span><div class="hint">Buy again after selling in the same market window.</div></div></div>
+<div class="field" style="margin-top:10px;max-width:120px"><label>Max Re-entries</label><input type="number" id="t2mr" step="1" min="0" max="10"></div>
+<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--dimmer);font-size:11px;user-select:none">Legacy (leave at defaults)</summary>
+<div style="margin-top:8px">
+<div class="tuple-group"><label>Exit Range 1</label><div class="tuple"><input type="number" id="t2e1m" step="0.01"><input type="number" id="t2e1x" step="0.01"></div></div>
+<div class="tuple-group"><label>Exit Range 2</label><div class="tuple"><input type="number" id="t2e2m" step="0.01"><input type="number" id="t2e2x" step="0.01"></div></div>
+<div class="tuple-group"><label>Emergency Swap</label><div class="tuple"><input type="number" id="t2esm" step="0.01"><input type="number" id="t2esx" step="0.01"></div></div>
+</div></details>
+</div>
+</details>
 </div>
 
 <button class="btn" id="saveBtn" onclick="save()">Save Settings</button>
@@ -461,6 +508,17 @@ document.querySelectorAll('.risk-btn').forEach((b,i)=>{b.className='risk-btn';})
 const cls={low:'risk-low active',med:'risk-med active',high:'risk-high active'};
 const idx={low:0,med:1,high:2};
 document.querySelectorAll('.risk-btn')[idx[level]].className='risk-btn '+cls[level];
+syncSliderDisplays();
+}
+function syncRange(){const mn=Number($('t2em').value),mx=Number($('t2ex').value);$('t2emV').textContent=mn.toFixed(2);$('t2exV').textContent=mx.toFixed(2);const f=$('t2rangeFill');f.style.left=(mn*100)+'%';f.style.width=((mx-mn)*100)+'%'}
+function syncSliderDisplays(){
+syncRange();
+$('t2etV').textContent=Math.round($('t2et').value*100)+'%';
+$('t2metV').textContent=Math.round($('t2met').value*100)+'%';
+$('t2msV').textContent=$('t2ms').value;
+const ts=$('t2ts').value;$('t2tsV').textContent=ts>=0.95?'OFF':Math.round(ts*100)+'%';
+const sl=$('t2slp').value;$('t2slpV').textContent=sl>=0.95?'OFF':Math.round(sl*100)+'%';
+const tp=$('t2tpr').value;$('t2tprV').textContent=tp>=0.95?'Hold':'@'+Math.round(tp*100)+'%';
 }
 function tAgo(ts){const d=Math.floor((Date.now()-ts)/1000);if(d<60)return d+'s ago';if(d<3600)return Math.floor(d/60)+'m ago';return Math.floor(d/3600)+'h ago'}
 function fP(v){return(v>=0?'+':'')+('$'+v.toFixed(2))}
@@ -565,6 +623,7 @@ $('t2tpr').value=c.trade_2.take_profit_ratio??'';$('t2ms').value=c.trade_2.min_s
 $('t2ps').checked=!!c.trade_2.position_scale;$('t2ar').checked=!!c.trade_2.allow_reentry;
 $('t2mr').value=c.trade_2.max_reentries??'';
 showStrat(c.strategy);
+syncSliderDisplays();
 }
 
 function col(){
