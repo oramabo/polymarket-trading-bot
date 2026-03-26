@@ -206,10 +206,10 @@ header h1{font-size:18px;color:#58a6ff}
 .stat{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px;text-align:center}
 .stat .sv{font-size:22px;font-weight:700;margin-bottom:2px}
 .stat .sl{font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
-.positions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.positions-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
 .position-card{background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px}
-.position-card .cn{font-size:15px;font-weight:700;color:#e6edf3;margin-bottom:4px;text-transform:uppercase}
-.side-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-bottom:6px}
+.position-card .cn{font-size:16px;font-weight:700;color:#e6edf3;text-transform:uppercase;display:inline}
+.side-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;margin-left:6px;vertical-align:middle}
 .side-up{background:#23863633;color:#3fb950}
 .side-down{background:#f8514933;color:#f85149}
 .side-none{background:#30363d;color:#8b949e}
@@ -217,8 +217,13 @@ header h1{font-size:18px;color:#58a6ff}
 .position-card .dt span{color:#c9d1d9}
 .pnl-pos{color:#3fb950}
 .pnl-neg{color:#f85149}
-.sig-bar{height:4px;background:#21262d;border-radius:2px;margin-top:6px;overflow:hidden}
-.sig-bar .fill{height:100%;border-radius:2px;background:#58a6ff;transition:width .3s}
+.pc-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.pc-time{font-size:13px;color:#8b949e;font-family:monospace}
+.pc-price-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.pc-price{font-size:22px;font-weight:700;color:#e6edf3;font-family:monospace}
+.pc-pnl{font-size:13px;font-weight:600}
+.pc-chart{width:100%;height:90px;display:block;border-radius:4px;margin-bottom:8px}
+.pc-details{display:grid;grid-template-columns:1fr 1fr;gap:2px 12px}
 .tt{width:100%;border-collapse:collapse;font-size:12px}
 .tt th{text-align:left;font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px;padding:6px 5px;border-bottom:1px solid #21262d}
 .tt td{padding:5px;border-bottom:1px solid #161b22}
@@ -493,6 +498,30 @@ input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(
 
 <script>
 const $=id=>document.getElementById(id);
+const priceHist=new Map();
+const MAX_PTS=60;
+function drawChart(id,prices,entry,side){
+const c=document.getElementById(id);if(!c||prices.length<2)return;
+const ctx=c.getContext('2d');const dpr=window.devicePixelRatio||1;
+c.width=c.clientWidth*dpr;c.height=c.clientHeight*dpr;
+ctx.scale(dpr,dpr);const w=c.clientWidth,h=c.clientHeight;
+ctx.clearRect(0,0,w,h);
+const all=[...prices];if(entry>0)all.push(entry);
+let mn=Math.min(...all),mx=Math.max(...all);
+const pad=(mx-mn)*0.15||0.005;mn-=pad;mx+=pad;
+const toX=i=>(i/(prices.length-1))*w;
+const toY=v=>h-((v-mn)/(mx-mn))*h;
+if(entry>0){const ey=toY(entry);ctx.beginPath();ctx.setLineDash([4,3]);ctx.strokeStyle='#484f58';ctx.lineWidth=1;ctx.moveTo(0,ey);ctx.lineTo(w,ey);ctx.stroke();ctx.setLineDash([]);
+ctx.fillStyle='#484f58';ctx.font='9px monospace';ctx.fillText('entry',w-30,ey-3)}
+const last=prices[prices.length-1];
+const above=entry>0?last>=entry:true;
+const col=side==='NONE'?'#58a6ff':(above?'#3fb950':'#f85149');
+ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.lineJoin='round';
+for(let i=0;i<prices.length;i++){const x=toX(i),y=toY(prices[i]);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+ctx.stroke();
+const grd=ctx.createLinearGradient(0,0,0,h);grd.addColorStop(0,col+'40');grd.addColorStop(1,col+'00');
+ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();ctx.fillStyle=grd;ctx.fill();
+const ly=toY(last);ctx.beginPath();ctx.arc(toX(prices.length-1),ly,3,0,Math.PI*2);ctx.fillStyle=col;ctx.fill()}
 function hp(text){$('hText').textContent=text;$('hPop').classList.add('show');$('hOverlay').classList.add('show')}
 function closeHelp(){$('hPop').classList.remove('show');$('hOverlay').classList.remove('show')}
 const RISK_PROFILES={
@@ -534,12 +563,12 @@ $('sTT').textContent=s.totalTrades;$('sWL').textContent=s.wins+'/'+s.losses;
 
 async function rPos(){
 try{const r=await fetch('/api/positions');const ps=await r.json();const g=$('pGrid');
-if(!ps.length){g.innerHTML='<div class="empty">No position data yet. The bot needs to connect and start a market cycle (up to 5-15 min).</div>';return}
+if(!ps.length){g.innerHTML='<div class="empty">No position data yet. Bot needs to connect and start a market cycle.</div>';return}
+for(const p of ps){const arr=priceHist.get(p.coin)||[];arr.push(Number(p.currentPrice)||0);if(arr.length>MAX_PTS)arr.shift();priceHist.set(p.coin,arr)}
 g.innerHTML=ps.map(p=>{
 const sc=p.side==='UP'?'side-up':p.side==='DOWN'?'side-down':'side-none';
 const uPnl=Number(p.unrealizedPnl)||0;
 const pc=uPnl>=0?'pnl-pos':'pnl-neg';
-const st=Math.max(0,Math.min(100,Math.round((Number(p.signalStrength)||0)*100)));
 const label=p.side==='NONE'?'Watching':'Holding '+p.side;
 const curPrice=Number(p.currentPrice)||0;
 const entPrice=Number(p.entryPrice)||0;
@@ -547,19 +576,20 @@ const shares=Number(p.shares)||0;
 const bal=Number(p.usdBalance)||0;
 const remTime=Number(p.remainingTime)||0;
 const pnlPct=entPrice>0?((curPrice-entPrice)/entPrice*100):0;
-const timeLeft=remTime>0?Math.floor(remTime/60)+'m '+(remTime%60)+'s':'--';
+const mm=Math.floor(remTime/60),ss=remTime%60;
+const timeStr=remTime>0?(mm>0?mm+'m '+ss+'s':ss+'s'):'--';
+const pnlHtml=p.side!=='NONE'&&entPrice>0?'<span class="pc-pnl '+pc+'">'+fP(uPnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)</span>':'';
 return '<div class="position-card">'+
-'<div class="cn">'+p.coin+'</div>'+
-'<span class="side-badge '+sc+'">'+label+'</span>'+
+'<div class="pc-header"><div><span class="cn">'+p.coin+'</span><span class="side-badge '+sc+'">'+label+'</span></div><div class="pc-time">'+timeStr+'</div></div>'+
+'<div class="pc-price-row"><span class="pc-price">$'+curPrice.toFixed(3)+'</span>'+pnlHtml+'</div>'+
+'<canvas class="pc-chart" id="ch_'+p.coin+'"></canvas>'+
+'<div class="pc-details">'+
 '<div class="dt">Balance <span style="color:#58a6ff;font-weight:600">$'+bal.toFixed(2)+'</span></div>'+
-'<div class="dt">Price <span>$'+curPrice.toFixed(3)+'</span></div>'+
 (entPrice>0?'<div class="dt">Entry <span>$'+entPrice.toFixed(3)+'</span></div>':'')+
 (shares>0?'<div class="dt">Shares <span>'+shares.toFixed(2)+'</span></div>':'')+
-(p.side!=='NONE'&&entPrice>0?'<div class="dt">PnL <span class="'+pc+'">'+fP(uPnl)+' ('+(pnlPct>=0?'+':'')+pnlPct.toFixed(1)+'%)</span></div>':'')+
-'<div class="dt">Time Left <span>'+timeLeft+'</span></div>'+
-'<div class="dt">Signal <span>'+st+'%</span></div>'+
-'<div class="sig-bar"><div class="fill" style="width:'+st+'%"></div></div>'+
-'</div>'}).join('');
+'<div class="dt">Signal <span>'+Math.round((Number(p.signalStrength)||0)*100)+'%</span></div>'+
+'</div></div>'}).join('');
+requestAnimationFrame(()=>{for(const p of ps){drawChart('ch_'+p.coin,priceHist.get(p.coin)||[],Number(p.entryPrice)||0,p.side)}});
 $('pUpd').textContent='Updated '+tAgo(Date.now());
 }catch(e){$('pGrid').innerHTML='<div class="empty">Error: '+(e.message||e)+'</div>'}}
 
