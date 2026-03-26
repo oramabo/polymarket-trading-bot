@@ -98,9 +98,22 @@ function getPositions(_req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify(Array.from(botState.positions.values())));
 }
 
-function getTrades(_req: IncomingMessage, res: ServerResponse) {
+async function getTrades(_req: IncomingMessage, res: ServerResponse) {
+  // Return in-memory trades, or fall back to DB if empty
+  let trades = botState.trades;
+  if (trades.length === 0) {
+    try {
+      const dbTrades = await dbGetTrades(50);
+      trades = dbTrades.map((t: any) => ({
+        coin: t.coin, side: t.side, action: t.action,
+        price: parseFloat(t.price), amount: parseFloat(t.amount),
+        shares: parseFloat(t.shares), pnl: parseFloat(t.pnl),
+        reason: t.reason || "", timestamp: new Date(t.created_at).getTime(),
+      }));
+    } catch (e) {}
+  }
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(botState.trades));
+  res.end(JSON.stringify(trades));
 }
 
 function getStats(_req: IncomingMessage, res: ServerResponse) {
@@ -292,6 +305,17 @@ header h1{font-size:18px;color:#58a6ff}
 </div>
 
 <div class="card">
+<h2>Risk Profile</h2>
+<p class="card-desc">Quick presets that auto-fill all Trade 2 parameters. Select one, then customize below if needed.</p>
+<div class="risk-row">
+<div class="risk-btn" onclick="setRisk('low')">Conservative</div>
+<div class="risk-btn" onclick="setRisk('med')">Balanced</div>
+<div class="risk-btn" onclick="setRisk('high')">Aggressive</div>
+</div>
+<div class="risk-desc" id="rDesc">Select a profile to auto-fill settings.</div>
+</div>
+
+<div class="card">
 <h2>General</h2>
 <p class="card-desc">Core bot settings. Strategy determines the trading algorithm used.</p>
 <div class="row3">
@@ -382,17 +406,6 @@ header h1{font-size:18px;color:#58a6ff}
 <label class="toggle"><input type="checkbox" id="t2ar"><span class="sl"></span></label>
 <span class="tl" >Allow Re-entry <span class="help" onclick="hp('Buy again after selling in the same market window.')">?</span></span>
 </div>
-</div>
-
-<div class="card">
-<h2>Risk Profile</h2>
-<p class="card-desc">Quick presets that auto-fill all Trade 2 parameters. You can customize individually after selecting.</p>
-<div class="risk-row">
-<div class="risk-btn" onclick="setRisk('low')">Conservative</div>
-<div class="risk-btn" onclick="setRisk('med')">Balanced</div>
-<div class="risk-btn" onclick="setRisk('high')">Aggressive</div>
-</div>
-<div class="risk-desc" id="rDesc">Select a profile to auto-fill settings, or customize manually above.</div>
 </div>
 
 <button class="btn" id="saveBtn" onclick="save()">Save Settings</button>
