@@ -20,6 +20,7 @@ function configToToml(c: any): string {
   const lines: string[] = [];
   lines.push(`strategy = "${c.strategy}"`);
   lines.push(`trade_usd = ${c.trade_usd}`);
+  if (c.min_balance) lines.push(`min_balance = ${c.min_balance}`);
   lines.push(`max_retries = ${c.max_retries}`);
   lines.push('');
   lines.push('[market]');
@@ -346,9 +347,14 @@ header h1{font-size:18px;color:#58a6ff}
 <div class="hint">How much money to bet on each trade. The bot may use less if the signal is weak (when Position Scale is on).</div>
 </div>
 <div class="field">
-<label>Max Retries <span class="help" onclick="hp('Times to retry a failed order before giving up.')">?</span></label>
+<label>Max Retries</label>
 <input type="number" id="max_retries" step="1" min="1">
 </div>
+</div>
+<div class="field" style="margin-bottom:12px">
+<label style="color:#f85149">Stop Trading Below ($)</label>
+<input type="number" id="min_balance" step="1" min="0" style="border-color:#f8514950">
+<div class="hint">Safety net: the bot stops opening new trades if your balance drops below this amount. Set to 0 to disable. Example: if you deposited $50 and want to keep at least $40, set this to 40.</div>
 </div>
 <div id="stratInfo"></div>
 </div>
@@ -522,7 +528,7 @@ $('strategy').addEventListener('change',e=>showStrat(e.target.value));
 
 function pop(c){
 $('strategy').value=c.strategy;$('sBadge').textContent=c.strategy;
-$('trade_usd').value=c.trade_usd;$('max_retries').value=c.max_retries;
+$('trade_usd').value=c.trade_usd;$('min_balance').value=c.min_balance||0;$('max_retries').value=c.max_retries;
 document.querySelectorAll('.ccb').forEach(cb=>{cb.checked=c.market.market_coins.includes(cb.value)});
 $('mp').value=c.market.market_period;$('bp').value=c.market.btc_period||'';
 $('t1em').value=c.trade_1.entry_price_range[0];$('t1ex').value=c.trade_1.entry_price_range[1];
@@ -545,7 +551,7 @@ function col(){
 const coins=[...document.querySelectorAll('.ccb:checked')].map(c=>c.value);
 const mkt={market_coins:coins,market_period:$('mp').value};
 if($('bp').value)mkt.btc_period=$('bp').value;
-return{strategy:$('strategy').value,trade_usd:parseFloat($('trade_usd').value),max_retries:parseInt($('max_retries').value),market:mkt,
+return{strategy:$('strategy').value,trade_usd:parseFloat($('trade_usd').value),min_balance:parseFloat($('min_balance').value)||0,max_retries:parseInt($('max_retries').value),market:mkt,
 trade_1:{entry_price_range:[parseFloat($('t1em').value),parseFloat($('t1ex').value)],swap_price_range:[parseFloat($('t1sm').value),parseFloat($('t1sx').value)],take_profit:parseFloat($('t1tp').value),stop_loss:parseFloat($('t1sl').value),exit_time_ratio:parseFloat($('t1et').value),exit_price_ratio:parseFloat($('t1ep').value)},
 trade_2:{entry_price_ratio:[parseFloat($('t2em').value),parseFloat($('t2ex').value)],entry_time_ratio:parseFloat($('t2et').value),max_entry_time_ratio:parseFloat($('t2met').value),exit_price_ratio_range:[[parseFloat($('t2e1m').value),parseFloat($('t2e1x').value)],[parseFloat($('t2e2m').value),parseFloat($('t2e2x').value)]],emergency_swap_price:[parseFloat($('t2esm').value),parseFloat($('t2esx').value)],trailing_stop_pct:parseFloat($('t2ts').value),stop_loss_pct:parseFloat($('t2slp').value),take_profit_ratio:parseFloat($('t2tpr').value),min_signal_strength:parseFloat($('t2ms').value),position_scale:$('t2ps').checked,allow_reentry:$('t2ar').checked,max_reentries:parseInt($('t2mr').value)}
 }}
