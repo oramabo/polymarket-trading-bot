@@ -108,6 +108,16 @@ function getStats(_req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify(botState.stats));
 }
 
+function getStatus(_req: IncomingMessage, res: ServerResponse) {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({
+    status: botState.botStatus,
+    uptime: Math.floor((Date.now() - botState.startedAt) / 1000),
+    coins: Array.from(botState.positions.keys()),
+    lastUpdates: Object.fromEntries(botState.lastPriceUpdate),
+  }));
+}
+
 function serveDashboard(_req: IncomingMessage, res: ServerResponse) {
   res.writeHead(200, { "Content-Type": "text/html" });
   res.end(DASHBOARD_HTML);
@@ -207,6 +217,12 @@ header h1{font-size:18px;color:#58a6ff}
   .positions-grid{grid-template-columns:1fr}
   .stat .sv{font-size:18px}
   header h1{font-size:16px}
+.conn-bar{padding:8px 16px;font-size:12px;text-align:center;font-weight:600;transition:.3s}
+.conn-ok{background:#23863620;color:#3fb950}
+.conn-err{background:#f8514920;color:#f85149}
+.conn-wait{background:#d2992220;color:#d29922}
+.pulse{animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 }
 </style>
 </head>
@@ -215,6 +231,7 @@ header h1{font-size:18px;color:#58a6ff}
 <h1>Polymarket Bot</h1>
 <span class="status" id="sBadge">--</span>
 </header>
+<div class="conn-bar conn-wait pulse" id="connBar">Connecting to bot...</div>
 <div class="container">
 
 <div class="stats-row">
@@ -380,7 +397,7 @@ $('sTT').textContent=s.totalTrades;$('sWL').textContent=s.wins+'/'+s.losses;
 
 async function rPos(){
 try{const r=await fetch('/api/positions');const ps=await r.json();const g=$('pGrid');
-if(!ps.length){g.innerHTML='<div class="empty">Waiting for market data...</div>';return}
+if(!ps.length){g.innerHTML='<div class="empty">No position data yet. The bot needs to connect and start a market cycle (up to 5-15 min).</div>';return}
 g.innerHTML=ps.map(p=>{
 const sc=p.side==='UP'?'side-up':p.side==='DOWN'?'side-down':'side-none';
 const pc=p.unrealizedPnl>=0?'pnl-pos':'pnl-neg';
@@ -459,8 +476,16 @@ else{$('msg').className='msg err';$('msg').textContent='Error: '+d.error}
 }catch(e){$('msg').className='msg err';$('msg').textContent='Save failed: '+e.message}
 b.disabled=false;b.textContent='Save Settings';setTimeout(()=>{$('msg').textContent=''},5000)}
 
-loadConfig();rStats();rPos();rTrades();
-setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(loadConfig,10000);
+async function rStatus(){
+try{const r=await fetch('/api/status');const s=await r.json();const bar=$('connBar');
+if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
+else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot connecting to Polymarket...'}
+else if(s.status==='starting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot starting...'}
+else{bar.className='conn-bar conn-err';bar.textContent='Bot error: '+s.status}
+}catch(e){$('connBar').className='conn-bar conn-err';$('connBar').textContent='Dashboard cannot reach bot API'}}
+
+loadConfig();rStatus();rStats();rPos();rTrades();
+setInterval(rStatus,3000);setInterval(rStats,2000);setInterval(rPos,2000);setInterval(rTrades,5000);setInterval(loadConfig,10000);
 </script>
 </body>
 </html>`;
@@ -476,6 +501,7 @@ export function startDashboard() {
     if (url.pathname === "/api/positions" && req.method === "GET") return getPositions(req, res);
     if (url.pathname === "/api/trades" && req.method === "GET") return getTrades(req, res);
     if (url.pathname === "/api/stats" && req.method === "GET") return getStats(req, res);
+    if (url.pathname === "/api/status" && req.method === "GET") return getStatus(req, res);
     if (url.pathname === "/api/trades/history" && req.method === "GET") {
       const limit = parseInt(url.searchParams.get("limit") || "100");
       const rows = await dbGetTrades(limit);

@@ -100,11 +100,13 @@ async function main() {
   const port = process.env.PORT || 3000;
   const signerAddr = SIGNER?.address || "unknown";
 
+  botState.botStatus = "connecting";
   await notifyLog(`Bot starting... Port: ${port}, Signer: ${signerAddr}`);
 
   console.log("SIGNER ", SIGNER);
   const clobClient = new ClobClient(HOST, CHAIN_ID, SIGNER);
   const apiKey = await clobClient.createOrDeriveApiKey();
+  botState.botStatus = "running";
   console.log("apiKey", apiKey);
 
   const client = new ClobClient(
@@ -130,6 +132,7 @@ async function main() {
 main().catch(async err => {
   const port = process.env.PORT || 3000;
   const errMsg = err?.message || String(err);
+  botState.botStatus = "error: " + errMsg.slice(0, 100);
   console.error("Fatal error in main():", err);
   console.log("Dashboard is still running. Fix the issue and restart.");
   await notifyStartup({ port, coins: [], signer: "unknown", error: errMsg });

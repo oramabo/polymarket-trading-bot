@@ -30,6 +30,8 @@ export const botState = {
   trades: [] as TradeRecord[],
   stats: { totalPnl: 0, wins: 0, losses: 0, totalTrades: 0 },
   lastPriceUpdate: new Map<string, number>(),
+  botStatus: "starting" as string,
+  startedAt: Date.now(),
 };
 
 export function logTrade(record: TradeRecord) {
