@@ -130,6 +130,7 @@ function getStatus(_req: IncomingMessage, res: ServerResponse) {
   res.end(JSON.stringify({
     status: botState.botStatus,
     paused: botState.paused,
+    demo: process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1",
     uptime: Math.floor((Date.now() - botState.startedAt) / 1000),
     coins: Array.from(botState.positions.keys()),
     lastUpdates: Object.fromEntries(botState.lastPriceUpdate),
@@ -687,7 +688,7 @@ btn.style.background=s.paused?'#238636':'#21262d';
 btn.style.borderColor=s.paused?'#238636':'#30363d';
 if(s.totalBalance>0)$('sBal').textContent='$'+s.totalBalance.toFixed(2);
 if(s.paused){bar.className='conn-bar';bar.style.background='#d2992220';bar.style.color='#d29922';bar.textContent='Bot PAUSED | Uptime: '+Math.floor(s.uptime/60)+'m'}
-else if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent='Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
+else if(s.status==='running'){bar.className='conn-bar conn-ok';bar.textContent=(s.demo?'DEMO MODE | ':'')+'Bot running | Uptime: '+Math.floor(s.uptime/60)+'m | Coins: '+(s.coins.length||'starting...')}
 else if(s.status==='connecting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Connecting to Polymarket...'}
 else if(s.status==='starting'){bar.className='conn-bar conn-wait pulse';bar.textContent='Bot starting...'}
 else{bar.className='conn-bar conn-err';bar.textContent='Error: '+s.status}

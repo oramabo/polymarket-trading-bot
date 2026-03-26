@@ -9,9 +9,16 @@ import { notifySettlement, notifyError, notifyStartup, notifyLog } from "./servi
 import { startDashboard } from "./dashboard.js";
 import { botState, logTrade, updatePosition } from "./state.js";
 import { initDb, dbLoadLastConfig, dbGetStats } from "./services/db.js";
+import { startDemoMode } from "./demo.js";
 
 loadConfig();
 startDashboard();
+
+// Check for demo mode
+if (process.env.DEMO_MODE === "true" || process.env.DEMO_MODE === "1") {
+  initDb().catch(() => {});
+  startDemoMode();
+} else {
 
 // Initialize DB and load persisted state
 initDb().then(async () => {
@@ -157,3 +164,5 @@ main().catch(async err => {
   await notifyStartup({ port, coins: [], signer: "unknown", error: errMsg });
   // Keep process alive for dashboard access
 });
+
+} // end else (non-demo mode)
